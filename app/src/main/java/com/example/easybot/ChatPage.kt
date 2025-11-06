@@ -91,7 +91,7 @@ fun AppHeader(){
             modifier = Modifier.padding(16.dp),
             text = "Lena Bot",
             color = Color.White,
-            fontSize = 22.sp
+            fontSize = 26.sp
         )
     }
 }
