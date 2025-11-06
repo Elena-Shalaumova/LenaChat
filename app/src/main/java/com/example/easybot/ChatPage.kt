@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,10 +33,24 @@ fun ChatPage(modifier: Modifier = Modifier, viewModel: ChatViewModel) {
         modifier = modifier
     ) {
         AppHeader()
+        MessageList(messageList = viewModel.messageList)
         MessageInput(onMessageSend = {
             viewModel.sendMessage(it)
         })
     }
+}
+
+
+
+
+@Composable
+fun MessageList(modifier: Modifier=Modifier,messageList : List<MessageModel>) {
+    LazyColumn {
+        items(messageList){
+            Text(text = it.message)
+    }
+    }
+
 }
 
 @Composable
