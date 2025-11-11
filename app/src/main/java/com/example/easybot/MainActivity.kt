@@ -13,19 +13,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.ViewModelProvider
 import com.example.easybot.ui.theme.EasyBotTheme
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        val chatViewModel = ViewModelProvider(this)[ChatViewModel::class.java]
+        //enableEdgeToEdge()
+        //val chatViewModel = ViewModelProvider(this)[ChatViewModel::class.java]
         setContent {
-            EasyBotTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ChatPage(modifier = Modifier.padding(innerPadding),chatViewModel)
+           // EasyBotTheme {
+              //  Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                 //   ChatPage(modifier = Modifier.padding(innerPadding),chatViewModel)
+            MyAppNavigation()
                 }
             }
         }
-    }
-}
+   // }
+//}
 

@@ -37,6 +37,7 @@ import com.example.easybot.ui.theme.ColorModelMessage
 import com.example.easybot.ui.theme.ColorUserMessage
 import com.example.easybot.ui.theme.Purple80
 
+
 @Composable
 fun ChatPage(modifier: Modifier = Modifier, viewModel: ChatViewModel) {
     Column(
