@@ -59,6 +59,11 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
     implementation("androidx.navigation:navigation-compose:2.8.3")
-    val nav_version = "2.9.6"
-    implementation("androidx.navigation:navigation-compose:$nav_version")
+
+}
+
+object Routes {
+    const val Login = "login"
+    const val Register = "register"
+    const val Main = "main"
 }

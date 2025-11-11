@@ -1,4 +1,4 @@
-package com.example.easybot
+package com.example.easybot.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,13 +33,20 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.easybot.ui.theme.ColorModelMessage
-import com.example.easybot.ui.theme.ColorUserMessage
-import com.example.easybot.ui.theme.Purple80
-
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.easybot.ChatViewModel
+import com.example.easybot.MessageModel
+import com.example.easybot.R
+import com.example.easybot.screens.theme.ColorModelMessage
+import com.example.easybot.screens.theme.ColorUserMessage
+import com.example.easybot.screens.theme.Purple80
 
 @Composable
-fun ChatPage(modifier: Modifier = Modifier, viewModel: ChatViewModel) {
+fun ChatPage(
+    username: String,
+    modifier: Modifier = Modifier,
+    viewModel: ChatViewModel = viewModel()
+) {
     Column(
         modifier = modifier
     ) {
@@ -67,7 +74,7 @@ fun MessageList(modifier: Modifier=Modifier,messageList : List<MessageModel>) {
         ) {
             Icon(
                 modifier = Modifier.size(60.dp),
-                painter=painterResource(id=R.drawable.baseline_question_answer_24),
+                painter=painterResource(id= R.drawable.baseline_question_answer_24),
                 contentDescription = "Icon",
                 tint = Purple80,
             )

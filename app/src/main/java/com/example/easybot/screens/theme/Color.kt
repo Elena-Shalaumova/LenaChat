@@ -1,4 +1,4 @@
-package com.example.easybot.ui.theme
+package com.example.easybot.screens.theme
 
 import androidx.compose.ui.graphics.Color
 

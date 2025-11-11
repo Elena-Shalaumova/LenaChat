@@ -3,19 +3,8 @@ package com.example.easybot
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.ViewModelProvider
-import com.example.easybot.ui.theme.EasyBotTheme
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.easybot.navigation.MyAppNavigation
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,7 +15,8 @@ class MainActivity : ComponentActivity() {
            // EasyBotTheme {
               //  Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                  //   ChatPage(modifier = Modifier.padding(innerPadding),chatViewModel)
-            MyAppNavigation()
+            val navController = rememberNavController()
+            MyAppNavigation(navController)
                 }
             }
         }
