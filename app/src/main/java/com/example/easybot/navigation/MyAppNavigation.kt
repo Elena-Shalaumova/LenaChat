@@ -29,5 +29,7 @@ fun MyAppNavigation(navController: NavHostController) {
             val username = backStackEntry.arguments?.getString("username") ?: "Guest"
             ChatPage(username = username) // передаём в экран
         }
+
+
     }
 }
