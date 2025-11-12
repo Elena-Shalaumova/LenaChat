@@ -12,15 +12,15 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 
+
+data class LoginReq(val login: String, val password: String)
+
 interface WebApiChatAI {
     @POST("api/WebAPIChatAI/AddUser")
     suspend fun addUser(@Body user: UserDto): Response<UserDto>
 
-    @GET("api/WebAPIChatAI/GetUserByLoginAndPassword/{login},{password}")
-    suspend fun getUserByLoginAndPassword(
-        @Path("login", encoded = true) login: String,
-        @Path("password", encoded = true) password: String
-    ): Response<UserDto?>
+    @POST("api/WebAPIChatAI/Login")
+    suspend fun login(@Body req: LoginReq): Response<UserDto>
 }
 
 fun provideApi(baseUrl: String = "http://10.0.2.2:5167/"): WebApiChatAI {
