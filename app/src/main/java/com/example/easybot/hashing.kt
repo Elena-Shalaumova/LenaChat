@@ -5,41 +5,6 @@ import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
-//object PasswordHasher {
-//    private const val SALT_BYTES = 16
-//    private const val HASH_BYTES = 32 // 256 bits
-//    private const val DEFAULT_ITERATIONS = 100_000
-//
-//    fun generateSalt(): ByteArray {
-//        val sr = SecureRandom()
-//        val salt = ByteArray(SALT_BYTES)
-//        sr.nextBytes(salt)
-//        return salt
-//    }
-//
-//    fun hashPassword(password: CharArray, salt: ByteArray, iterations: Int = DEFAULT_ITERATIONS): ByteArray {
-//        val spec = PBEKeySpec(password, salt, iterations, HASH_BYTES * 8)
-//        val skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-//        val key = skf.generateSecret(spec).encoded
-//        spec.clearPassword()
-//        return key
-//    }
-//
-//    fun encodeBase64(bytes: ByteArray): String = Base64.encodeToString(bytes, Base64.NO_WRAP)
-//    fun decodeBase64(str: String): ByteArray = Base64.decode(str, Base64.NO_WRAP)
-//
-//    // Helper to produce the storage string
-//    fun makeStorageString(hash: ByteArray, salt: ByteArray, iterations: Int = DEFAULT_ITERATIONS): String {
-//        val h = encodeBase64(hash)
-//        val s = encodeBase64(salt)
-//        return "$iterations:$s:$h"
-//    }
-//
-//    // For verification on client if needed
-//    fun verify(password: CharArray, salt: ByteArray, iterations: Int, expectedHash: ByteArray): Boolean {
-//        val candidate = hashPassword(password, salt, iterations)
-//        return candidate.contentEquals(expectedHash)
-//    }
 
 /**
  * Утилита для хэширования паролей PBKDF2 (PBKDF2WithHmacSHA256)

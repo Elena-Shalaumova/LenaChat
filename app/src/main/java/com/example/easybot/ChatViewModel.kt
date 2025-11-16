@@ -1,44 +1,102 @@
-package com.example.easybot
+package com.example.easybot.screens
 
-import android.util.Log
-import androidx.compose.runtime.mutableStateListOf
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.example.easybot.Constants
+import com.example.easybot.data.local.ChatDatabase
+import com.example.easybot.data.local.ChatRepository
+import com.example.easybot.data.local.MessageEntity
+import com.example.easybot.MessageModel
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-class ChatViewModel : ViewModel() {
-
-    val messageList by lazy {
-        mutableStateListOf<MessageModel>()
+class ChatViewModel(application: Application) : AndroidViewModel(application) {
+    private val repository: ChatRepository by lazy {
+        val db = ChatDatabase.getInstance(application)
+        ChatRepository(db.chatDao())
     }
 
-    val generativeModel : GenerativeModel = GenerativeModel(
-        modelName = "gemini-2.5-flash",
-        apiKey = Constants.apiKey
-    )
+    private val generativeModel: GenerativeModel by lazy {
+        GenerativeModel(
+            modelName = "gemini-2.5-flash",
+            apiKey = Constants.apiKey
+        )
+    }
 
-    fun sendMessage(question : String){
+    private var chatId: Long = -1L
+
+    var messageList by mutableStateOf<List<MessageModel>>(emptyList())
+        private set
+
+    fun init(chatId: Long) {
+        if (this.chatId == chatId) return
+        this.chatId = chatId
+
         viewModelScope.launch {
-            try{
+            repository.getMessages(chatId).collect { entities ->
+                messageList = entities.map { it.toModel() }
+            }
+        }
+    }
+
+    fun sendMessage(question: String) {
+        if (chatId == -1L || question.isBlank()) return
+
+        viewModelScope.launch {
+            // Сохраняем сообщение пользователя
+            repository.insertMessage(
+                chatId = chatId,
+                role = "user",
+                message = question
+            )
+
+            // Готовим историю для Gemini
+            try {
+                val chatHistory = repository.getMessages(chatId).first()
                 val chat = generativeModel.startChat(
-                    history = messageList.map {
-                        content(it.role){text(it.message)}
-                    }.toList()
+                    history = chatHistory
+                        .filter { it.role != "user" || it.message != question } // Убираем последнее сообщение пользователя из истории
+                        .map { 
+                            content(it.role) { text(it.message) }
+                        }
                 )
 
-                messageList.add(MessageModel(question,"user"))
-                messageList.add(MessageModel("Typing....","model"))
-
+                // Отправляем сообщение и получаем ответ
                 val response = chat.sendMessage(question)
-                messageList.removeLast()
-                messageList.add(MessageModel(response.text.toString(),"model"))
-            }catch (e:Exception){
-                messageList.removeLast()
-                messageList.add(MessageModel("Error: "+e.message.toString(),"model"))
-            }
 
+                // Сохраняем ответ Gemini
+                response.text?.let {
+                    repository.insertMessage(
+                        chatId = chatId,
+                        role = "model",
+                        message = it
+                    )
+                }
+
+            } catch (e: Exception) {
+                // Обработка ошибок (например, записать в лог)
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun clearCurrentChat() {
+        if (chatId == -1L) return
+        viewModelScope.launch {
+            repository.clearChat(chatId)
         }
     }
 }
+
+private fun MessageEntity.toModel(): MessageModel =
+    MessageModel(
+        message = message,
+        role = role,
+        isUser = role == "user"
+    )

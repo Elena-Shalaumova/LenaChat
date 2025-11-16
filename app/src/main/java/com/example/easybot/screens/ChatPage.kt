@@ -34,27 +34,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.easybot.ChatViewModel
 import com.example.easybot.MessageModel
 import com.example.easybot.R
 import com.example.easybot.screens.theme.ColorModelMessage
 import com.example.easybot.screens.theme.ColorUserMessage
 import com.example.easybot.screens.theme.Purple80
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+
 
 @Composable
 fun ChatPage(
-    username: String,
+    chatId: Long,
     modifier: Modifier = Modifier,
     viewModel: ChatViewModel = viewModel()
 ) {
-    Column(
-        modifier = modifier
-    ) {
-        AppHeader()
+    LaunchedEffect(chatId) {
+        viewModel.init(chatId)
+    }
+
+    Column(modifier = modifier) {
+        AppHeader(onClear = { viewModel.clearCurrentChat() })
+
         MessageList(
             modifier = Modifier.weight(1f),
             messageList = viewModel.messageList
         )
+
         MessageInput(onMessageSend = {
             viewModel.sendMessage(it)
         })
@@ -164,15 +170,40 @@ fun MessageInput(onMessageSend : (String)-> Unit) {
 }
 
 @Composable
-fun AppHeader(){
-    Box(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary)
+//fun AppHeader(){
+//    Box(
+//        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary)
+//    ) {
+//        Text(
+//            modifier = Modifier.padding(16.dp),
+//            text = "Lena Bot",
+//            color = Color.White,
+//            fontSize = 26.sp
+//        )
+//    }
+//}
+fun AppHeader(onClear: () -> Unit = {}) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.primary)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+
         Text(
-            modifier = Modifier.padding(16.dp),
             text = "Lena Bot",
             color = Color.White,
-            fontSize = 26.sp
+            fontSize = 26.sp,
+            modifier = Modifier.weight(1f)
         )
+
+        TextButton(onClick = onClear) {
+            Text(
+                text = "Очистить",
+                color = Color.White,
+                fontSize = 16.sp
+            )
+        }
     }
 }

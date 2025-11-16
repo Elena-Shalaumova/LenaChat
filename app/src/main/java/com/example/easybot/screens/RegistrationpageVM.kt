@@ -7,10 +7,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.easybot.LoginReq
 import com.example.easybot.UserDto
+import com.example.easybot.RegisterDto
 import com.example.easybot.WebApiChatAI
 import com.example.easybot.provideApi
 import kotlinx.coroutines.launch
-import com.example.easybot.PasswordHasher
 
 class RegistrationpageVM(private val api: WebApiChatAI = provideApi()
 ) : ViewModel() {
@@ -21,88 +21,66 @@ class RegistrationpageVM(private val api: WebApiChatAI = provideApi()
 
     fun signIn(onSuccess: (UserDto) -> Unit) = viewModelScope.launch {
         error = null
+
         if (login.isBlank() || password.isBlank()) {
-            error = "Введите логин и пароль"; return@launch
+            error = "Введите логин и пароль"
+            return@launch
         }
+
         loading = true
         try {
-            val resp = api.login(LoginReq(login, password))
+            val resp = api.login(req = LoginReq(login, password))
+
             if (resp.isSuccessful) {
-                resp.body()?.let(onSuccess) ?: run { error = "Пустой ответ сервера" }
+                resp.body()?.let { user ->
+                    onSuccess(user)
+                } ?: run {
+                    error = "Пустой ответ сервера"
+                }
             } else {
                 error = when (resp.code()) {
                     401 -> "Неверный логин/пароль"
                     404 -> "Пользователь не найден"
-                    405 -> "Метод не разрешён (проверь @POST и маршрут)"
+                    405 -> "Метод не разрешён (проверь POST и маршрут)"
                     else -> "HTTP ${resp.code()}"
                 }
             }
         } catch (t: Throwable) {
             error = t.message ?: "Network error"
-        } finally { loading = false }
+        } finally {
+            loading = false
+        }
     }
 
-//    fun signUp(onSuccess: (UserDto) -> Unit) = viewModelScope.launch {
-//        if (login.isBlank() || password.length < 6) { error = "Пароль ≥ 6"; return@launch }
-//        loading = true
-//        try {
-//            val r = api.addUser(UserDto(login = login, password = password))
-//            if (r.isSuccessful) r.body()?.let(onSuccess) ?: run { error = "Пустой ответ" }
-//            else error = "HTTP ${r.code()}"
-//        } catch (t: Throwable) { error = t.message ?: "Network error" }
-//        finally { loading = false }
-//    }
-fun signUp(onSuccess: (UserDto) -> Unit) = viewModelScope.launch {
-    if (login.isBlank() || password.length < 6) {
-        error = "Пароль ≥ 6"
-        return@launch
-    }
-
-    loading = true
-    try {
-        // 1) превращаем пароль в CharArray
-        val pwdChars = password.toCharArray()
-
-        // 2) генерим соль
-        val salt = PasswordHasher.generateSalt()
-
-        // 3) считаем PBKDF2-хэш (100_000 итераций)
-        val hash = PasswordHasher.hashPassword(
-            password = pwdChars,
-            salt = salt,
-            iterations = PasswordHasher.DEFAULT_ITERATIONS   // либо PasswordHasher.defaultIterations
-        )
-
-        // 4) кодируем в base64 для пересылки
-        val saltB64 = PasswordHasher.encodeBase64(salt)
-        val hashB64 = PasswordHasher.encodeBase64(hash)
-
-        // (опционально) затираем пароль в памяти
-        java.util.Arrays.fill(pwdChars, '\u0000')
-
-        // 5) формируем DTO без чистого пароля
-        val dto = UserDto(
-            login = login,
-            password = null,
-            password_hash = hashB64,
-            salt = saltB64,
-            iterations = PasswordHasher.DEFAULT_ITERATIONS,
-            is_hashed = true
-        )
-
-        // 6) отправляем на сервер
-        val r = api.addUser(dto)
-        if (r.isSuccessful) {
-            r.body()?.let(onSuccess) ?: run { error = "Пустой ответ" }
-        } else {
-            error = "HTTP ${r.code()}"
+    fun signUp(onSuccess: (UserDto) -> Unit) = viewModelScope.launch {
+        error = null
+        if (login.isBlank() || password.length < 6) {
+            error = "Логин не может быть пустым, а пароль должен быть не менее 6 символов"
+            return@launch
         }
 
-    } catch (t: Throwable) {
-        error = t.message ?: "Network error"
-    } finally {
-        loading = false
-    }
-}
+        loading = true
+        try {
+            // Создаем простой DTO с логином и паролем
+            val registerDto = RegisterDto(login = login, password = password)
 
+            // Отправляем на сервер
+            val response = api.addUser(registerDto)
+
+            if (response.isSuccessful) {
+                response.body()?.let(onSuccess) ?: run { error = "Пустой ответ от сервера" }
+            } else {
+                // Обрабатываем ошибки, которые возвращает твой API
+                error = when (response.code()) {
+                    400 -> "Логин и пароль обязательны"
+                    409 -> "Пользователь с таким логином уже существует"
+                    else -> "Ошибка регистрации: HTTP ${response.code()}"
+                }
+            }
+        } catch (t: Throwable) {
+            error = t.message ?: "Ошибка сети"
+        } finally {
+            loading = false
+        }
+    }
 }
