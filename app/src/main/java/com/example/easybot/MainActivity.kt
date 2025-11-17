@@ -5,21 +5,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.navigation.compose.rememberNavController
 import com.example.easybot.navigation.MyAppNavigation
+import com.example.easybot.screens.theme.EasyBotTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        //enableEdgeToEdge()
-        //val chatViewModel = ViewModelProvider(this)[ChatViewModel::class.java]
         setContent {
-           // EasyBotTheme {
-              //  Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                 //   ChatPage(modifier = Modifier.padding(innerPadding),chatViewModel)
-            val navController = rememberNavController()
-            MyAppNavigation(navController)
-                }
-            }
+           EasyBotTheme(dynamicColor = false) { // Применяем нашу тему и отключаем динамический цвет
+                val navController = rememberNavController()
+                MyAppNavigation(navController)
+           }
         }
-   // }
-//}
-
+    }
+}

@@ -16,88 +16,89 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
-import com.example.easybot.navigation.Routes
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.easybot.screens.theme.ChatListViewModel
+import androidx.navigation.NavHostController
 import com.example.easybot.data.local.ChatEntity
+import com.example.easybot.navigation.Routes
+import com.example.easybot.screens.theme.ChatListViewModel
 
 @Composable
 fun ChatListScreen(
     navController: NavHostController,
     viewModel: ChatListViewModel = viewModel()
 ) {
-    // чаты из Room → State<List<ChatEntity>>
-    //val chats by viewModel.chats.collectAsState()
-
-    // Чаты из Room -> State<List<ChatEntity>>
     val chats: List<ChatEntity> by viewModel.chats.collectAsState(initial = emptyList())
 
-
     Scaffold(
-        topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Text(
-                    text = "Мои чаты",
-                    style = MaterialTheme.typography.titleLarge
-                )
-            }
-        },
+        containerColor = Color(0xFFE8F5FE),
+        // Я убрал topBar отсюда, чтобы получить больше контроля
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    // создаём новый чат через VM
                     val index = chats.size + 1
                     viewModel.createChat("Новый чат #$index")
-                }
+                },
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Добавить чат"
+                    contentDescription = "Создать новый чат",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
                 )
             }
         }
-    ) { paddingValues ->
-        if (chats.isEmpty()) {
-            // Пустое состояние
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
+    ) { paddingValues -> // Эти отступы теперь только для системных элементов (status bar, navigation bar)
+
+        // Используем LazyColumn для всего контента, чтобы он был единым списком
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                // Применяем системные отступы
+                .padding(paddingValues),
+            // Добавляем наши собственные отступы: 80.dp сверху, чтобы сдвинуть всё вниз
+            contentPadding = PaddingValues(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Заголовок теперь - первый элемент списка
+            item {
                 Text(
-                    text = "Пока нет чатов.\nНажми +, чтобы создать первый 👇",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = "Мои чаты",
+                    style = MaterialTheme.typography.headlineLarge, // Сделал стиль чуть больше
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 12.dp) // Отступ после заголовка
                 )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+
+            if (chats.isEmpty()) {
+                item {
+                    // Пустое состояние
+                    Box(
+                        modifier = Modifier
+                            .fillParentMaxWidth() // Занимаем всю ширину
+                            .padding(vertical = 50.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Пока нет чатов.\nНажми +, чтобы создать первый 👇",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            } else {
+                // Список чатов
                 items(chats, key = { it.id }) { chat ->
                     ChatRow(
                         chat = chat,
                         onOpen = {
-                            // передаём chatId в роут вида "chat/{chatId}"
-                            val route = Routes.Chat.replace("{chatId}", chat.id.toString())
                             navController.navigate("chat/${chat.id}")
                         },
                         onDelete = {
@@ -120,6 +121,9 @@ private fun ChatRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onOpen() },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primary
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -133,18 +137,18 @@ private fun ChatRow(
             ) {
                 Text(
                     text = chat.title,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White
                 )
-                // сюда позже можно добавить дату/последнее сообщение
             }
 
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "Удалить чат"
+                    contentDescription = "Удалить чат",
+                    tint = Color.White
                 )
             }
         }
     }
 }
-

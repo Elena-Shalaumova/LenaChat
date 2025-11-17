@@ -10,11 +10,21 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 
+// Классы для общения с Ollama
+data class ChatRequest(val message: String)
+data class ChatResponse(val answer: String)
+
+// Классы для авторизации (остаются без изменений)
 data class LoginReq(val login: String, val password: String)
 
 interface WebApiChatAI {
+    // --- Новый метод для чата с Ollama ---
+    @POST("api/Ai/chat") // <-- ИСПРАВЛЕНО
+    suspend fun chat(@Body request: ChatRequest): ChatResponse
+
+    // --- Старые методы для авторизации ---
     @POST("api/WebAPIChatAI/AddUser")
-    suspend fun addUser(@Body user: RegisterDto): Response<UserDto> // <-- Изменено на RegisterDto
+    suspend fun addUser(@Body user: RegisterDto): Response<UserDto>
 
     @POST("api/WebAPIChatAI/Login")
     suspend fun login(@Body req: LoginReq): Response<UserDto>

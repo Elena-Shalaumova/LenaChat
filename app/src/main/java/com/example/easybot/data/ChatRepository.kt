@@ -1,14 +1,21 @@
 package com.example.easybot.data.local
 
+import com.example.easybot.* // Импортируем все необходимое, включая ChatRequest
 import com.example.easybot.data.local.ChatDao
 import com.example.easybot.data.local.MessageEntity
 import com.example.easybot.data.local.ChatEntity
 import kotlinx.coroutines.flow.Flow
-import com.example.easybot.UserSession
 
 class ChatRepository(
-    private val dao: ChatDao
+    private val dao: ChatDao,
+    private val api: WebApiChatAI = provideApi() // Добавляем экземпляр API
 ) {
+    // ---- Новый метод для общения с Ollama ----
+    suspend fun sendMessageToAi(text: String): String {
+        val response = api.chat(ChatRequest(message = text))
+        return response.answer
+    }
+
     // ---- Чаты текущего пользователя ----
     fun getChatsForCurrentUser(): Flow<List<ChatEntity>> {
         val userId = UserSession.userId ?: error("User not logged in")
@@ -25,7 +32,6 @@ class ChatRepository(
         return dao.insertChat(chat)
     }
 
-    // 🔹 ВОТ ЭТОТ МЕТОД НУЖЕН ДЛЯ ChatListViewModel
     suspend fun deleteChat(chatId: Long) {
         dao.deleteChatWithMessages(chatId)
     }

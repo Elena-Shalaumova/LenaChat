@@ -19,12 +19,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,8 +37,6 @@ import com.example.easybot.R
 import com.example.easybot.screens.theme.ColorModelMessage
 import com.example.easybot.screens.theme.ColorUserMessage
 import com.example.easybot.screens.theme.Purple80
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.LaunchedEffect
 
 
 @Composable
@@ -53,7 +49,7 @@ fun ChatPage(
         viewModel.init(chatId)
     }
 
-    Column(modifier = modifier) {
+    Column(modifier = modifier.fillMaxSize()) {
         AppHeader(onClear = { viewModel.clearCurrentChat() })
 
         MessageList(
@@ -67,12 +63,9 @@ fun ChatPage(
     }
 }
 
-
-
-
 @Composable
-fun MessageList(modifier: Modifier=Modifier,messageList : List<MessageModel>) {
-    if(messageList.isEmpty()){
+fun MessageList(modifier: Modifier = Modifier, messageList: List<MessageModel>) {
+    if (messageList.isEmpty()) {
         Column(
             modifier = modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -80,18 +73,18 @@ fun MessageList(modifier: Modifier=Modifier,messageList : List<MessageModel>) {
         ) {
             Icon(
                 modifier = Modifier.size(60.dp),
-                painter=painterResource(id= R.drawable.baseline_question_answer_24),
+                painter = painterResource(id = R.drawable.baseline_question_answer_24),
                 contentDescription = "Icon",
                 tint = Purple80,
             )
-            Text(text="Ask me anything", fontSize = 22.sp)
+            Text(text = "Ask me anything", fontSize = 22.sp)
         }
-    }else{
-        LazyColumn (
-            modifier = modifier,
+    } else {
+        LazyColumn(
+            modifier = modifier.padding(horizontal = 8.dp),
             reverseLayout = true
         ) {
-            items(messageList.reversed()){
+            items(messageList.reversed()) {
                 MessageRow(messageModel = it)
             }
         }
@@ -99,101 +92,83 @@ fun MessageList(modifier: Modifier=Modifier,messageList : List<MessageModel>) {
 }
 
 @Composable
-fun MessageRow (messageModel: MessageModel) {
-    val isModel = messageModel.role=="model"
+fun MessageRow(messageModel: MessageModel) {
+    val isModel = messageModel.role == "model"
 
     Row(
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = if (isModel) Arrangement.Start else Arrangement.End
     ) {
         Box(
-          modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(if (isModel) ColorModelMessage else ColorUserMessage)
+                .padding(16.dp)
         ) {
-
-            Box (
-                    modifier = Modifier.align(if(isModel) Alignment.BottomStart else Alignment.BottomEnd)
-                        .padding(
-                            start = if(isModel) 8.dp else 70.dp,
-                            end = if(isModel) 70.dp else 8.dp,
-                            top = 8.dp,
-                            bottom = 8.dp
-                        )
-                        .clip(RoundedCornerShape(48f))
-                        .background(if(isModel) ColorModelMessage else ColorUserMessage)
-                        .padding(16.dp)
-            ) {
-
-                SelectionContainer {
-                    Text(
-                        text = messageModel.message,
-                        fontWeight = FontWeight.W500,
-                        color = Color.White
-                    )
-                }
-
+            SelectionContainer {
+                Text(
+                    text = messageModel.message,
+                    fontWeight = FontWeight.W500,
+                    color = Color.Black // <-- Шрифт в сообщениях сделал черным
+                )
             }
         }
-
     }
-
 }
 
 @Composable
-fun MessageInput(onMessageSend : (String)-> Unit) {
-
+fun MessageInput(onMessageSend: (String) -> Unit) {
     var message by remember {
         mutableStateOf("")
     }
 
     Row(
-        modifier = Modifier.padding(8.dp),
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 40.dp, top = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         OutlinedTextField(
             modifier = Modifier.weight(1f),
             value = message,
             onValueChange = {
-            message = it
-        })
+                message = it
+            },
+            shape = RoundedCornerShape(24.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color(0xFFE8F5FE),
+                unfocusedContainerColor = Color(0xFFE8F5FE),
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent
+            )
+        )
         IconButton(onClick = {
-            if(message.isNotEmpty()) {
+            if (message.isNotEmpty()) {
                 onMessageSend(message)
                 message = ""
             }
-
         }) {
             Icon(
                 imageVector = Icons.Default.Send,
-                contentDescription = "Send"
+                contentDescription = "Send",
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }
 }
 
 @Composable
-//fun AppHeader(){
-//    Box(
-//        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary)
-//    ) {
-//        Text(
-//            modifier = Modifier.padding(16.dp),
-//            text = "Lena Bot",
-//            color = Color.White,
-//            fontSize = 26.sp
-//        )
-//    }
-//}
 fun AppHeader(onClear: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primary)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Text(
-            text = "Lena Bot",
-            color = Color.White,
+            text = "Alabuga AI Bot",
+            color = Color.Black, // <-- Шрифт в шапке сделал черным
             fontSize = 26.sp,
             modifier = Modifier.weight(1f)
         )
@@ -201,7 +176,7 @@ fun AppHeader(onClear: () -> Unit = {}) {
         TextButton(onClick = onClear) {
             Text(
                 text = "Очистить",
-                color = Color.White,
+                color = Color.Black, // <-- Шрифт "Очистить" сделал черным
                 fontSize = 16.sp
             )
         }

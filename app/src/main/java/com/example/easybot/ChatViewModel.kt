@@ -6,27 +6,16 @@ import androidx.lifecycle.viewModelScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.example.easybot.Constants
 import com.example.easybot.data.local.ChatDatabase
 import com.example.easybot.data.local.ChatRepository
 import com.example.easybot.data.local.MessageEntity
 import com.example.easybot.MessageModel
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.content
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: ChatRepository by lazy {
         val db = ChatDatabase.getInstance(application)
-        ChatRepository(db.chatDao())
-    }
-
-    private val generativeModel: GenerativeModel by lazy {
-        GenerativeModel(
-            modelName = "gemini-2.5-flash",
-            apiKey = Constants.apiKey
-        )
+        ChatRepository(db.chatDao()) // Repository теперь создается с API внутри
     }
 
     private var chatId: Long = -1L
@@ -49,39 +38,32 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         if (chatId == -1L || question.isBlank()) return
 
         viewModelScope.launch {
-            // Сохраняем сообщение пользователя
+            // 1. Сохраняем сообщение пользователя в локальную БД
             repository.insertMessage(
                 chatId = chatId,
                 role = "user",
                 message = question
             )
 
-            // Готовим историю для Gemini
+            // 2. Отправляем сообщение в Ollama через наш репозиторий
             try {
-                val chatHistory = repository.getMessages(chatId).first()
-                val chat = generativeModel.startChat(
-                    history = chatHistory
-                        .filter { it.role != "user" || it.message != question } // Убираем последнее сообщение пользователя из истории
-                        .map { 
-                            content(it.role) { text(it.message) }
-                        }
+                val reply = repository.sendMessageToAi(question)
+
+                // 3. Сохраняем ответ от Ollama в локальную БД
+                repository.insertMessage(
+                    chatId = chatId,
+                    role = "model",
+                    message = reply
                 )
-
-                // Отправляем сообщение и получаем ответ
-                val response = chat.sendMessage(question)
-
-                // Сохраняем ответ Gemini
-                response.text?.let {
-                    repository.insertMessage(
-                        chatId = chatId,
-                        role = "model",
-                        message = it
-                    )
-                }
-
             } catch (e: Exception) {
-                // Обработка ошибок (например, записать в лог)
+                // Обработка ошибок сети или API
                 e.printStackTrace()
+                // Опционально: можно сохранить сообщение об ошибке в чат
+                repository.insertMessage(
+                    chatId = chatId,
+                    role = "model",
+                    message = "Ошибка: ${e.message}"
+                )
             }
         }
     }
