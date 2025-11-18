@@ -15,13 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,19 +42,43 @@ fun ChatPage(
         viewModel.init(chatId)
     }
 
+    // "Подписываемся" на messageList и получаем его текущее значение
+    val messages by viewModel.messageList.collectAsState()
+    //val isLoading by viewModel.isLoading
+    //val errorMessage by viewModel.errorMessage
+
     Column(modifier = modifier.fillMaxSize()) {
         AppHeader(onClear = { viewModel.clearCurrentChat() })
 
         MessageList(
             modifier = Modifier.weight(1f),
-            messageList = viewModel.messageList
+            messageList = messages // Передаем текущий список сообщений
         )
+
+        // Показываем индикатор загрузки, если нужно
+        //if (isLoading) {
+           // LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+       // }
+
+        // Показываем сообщение об ошибке, если есть
+//        errorMessage?.let {
+//            Text(
+//                text = it,
+//                color = MaterialTheme.colorScheme.error,
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .background(Color.Black.copy(alpha = 0.3f))
+//                    .padding(8.dp)
+//            )
+//        }
 
         MessageInput(onMessageSend = {
             viewModel.sendMessage(it)
         })
     }
 }
+
+// Остальной код остается без изменений, так как он уже работает с готовым списком
 
 @Composable
 fun MessageList(modifier: Modifier = Modifier, messageList: List<MessageModel>) {
@@ -167,7 +185,7 @@ fun AppHeader(onClear: () -> Unit = {}) {
     ) {
         Text(
             text = "Alabuga AI Bot",
-            color = Color.White, // <-- Сделал шрифт белым
+            color = Color.White,
             fontSize = 26.sp,
             modifier = Modifier.weight(1f)
         )
@@ -175,7 +193,7 @@ fun AppHeader(onClear: () -> Unit = {}) {
         TextButton(onClick = onClear) {
             Text(
                 text = "Очистить",
-                color = Color.White, // <-- Сделал шрифт белым
+                color = Color.White,
                 fontSize = 16.sp
             )
         }

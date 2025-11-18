@@ -13,5 +13,5 @@ val Pink40 = Color(0xFF7D5260)
 
 // Сообщения пользователя - голубые
 val ColorUserMessage = Color(0xFFB3E5FC)
-// Ответы нейросети - сиреневые
-val ColorModelMessage = Color(0xFFD0BCFF)
+// Ответы нейросети - менее насыщенный сиреневый
+val ColorModelMessage = Color(0xFFE6E0F8)
