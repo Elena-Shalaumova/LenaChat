@@ -57,8 +57,8 @@ fun ChatPage(
 
         // Показываем индикатор загрузки, если нужно
         //if (isLoading) {
-           // LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-       // }
+        // LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        // }
 
         // Показываем сообщение об ошибке, если есть
 //        errorMessage?.let {
