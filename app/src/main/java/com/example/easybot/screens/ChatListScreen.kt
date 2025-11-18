@@ -7,14 +7,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -38,7 +32,29 @@ fun ChatListScreen(
 
     Scaffold(
         containerColor = Color(0xFFE8F5FE),
-        // Я убрал topBar отсюда, чтобы получить больше контроля
+        topBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 40.dp, bottom = 12.dp, start = 16.dp, end = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Мои чаты",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { navController.navigate(Routes.Settings) }) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Настройки",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
@@ -55,46 +71,27 @@ fun ChatListScreen(
                 )
             }
         }
-    ) { paddingValues -> // Эти отступы теперь только для системных элементов (status bar, navigation bar)
-
-        // Используем LazyColumn для всего контента, чтобы он был единым списком
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                // Применяем системные отступы
-                .padding(paddingValues),
-            // Добавляем наши собственные отступы: 80.dp сверху, чтобы сдвинуть всё вниз
-            contentPadding = PaddingValues(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Заголовок теперь - первый элемент списка
-            item {
+    ) { paddingValues ->
+        if (chats.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text = "Мои чаты",
-                    style = MaterialTheme.typography.headlineLarge, // Сделал стиль чуть больше
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 12.dp) // Отступ после заголовка
+                    text = "Пока нет чатов.\nНажми +, чтобы создать первый 👇",
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
-
-            if (chats.isEmpty()) {
-                item {
-                    // Пустое состояние
-                    Box(
-                        modifier = Modifier
-                            .fillParentMaxWidth() // Занимаем всю ширину
-                            .padding(vertical = 50.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Пока нет чатов.\nНажми +, чтобы создать первый 👇",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            } else {
-                // Список чатов
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 items(chats, key = { it.id }) { chat ->
                     ChatRow(
                         chat = chat,

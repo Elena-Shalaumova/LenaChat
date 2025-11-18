@@ -11,6 +11,7 @@ val Purple40 = Color(0xFF0D47A1)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
-// Цвета сообщений пока оставляем голубыми, чтобы они отличались
+// Сообщения пользователя - голубые
 val ColorUserMessage = Color(0xFFB3E5FC)
-val ColorModelMessage = Color(0xFFB3E5FC)
+// Ответы нейросети - сиреневые
+val ColorModelMessage = Color(0xFFD0BCFF)

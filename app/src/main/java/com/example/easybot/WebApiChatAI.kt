@@ -19,7 +19,7 @@ data class LoginReq(val login: String, val password: String)
 
 interface WebApiChatAI {
     // --- Новый метод для чата с Ollama ---
-    @POST("api/Ai/chat") // <-- ИСПРАВЛЕНО
+    @POST("api/Ai/chat")
     suspend fun chat(@Body request: ChatRequest): ChatResponse
 
     // --- Старые методы для авторизации ---

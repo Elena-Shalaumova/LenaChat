@@ -38,7 +38,6 @@ import com.example.easybot.screens.theme.ColorModelMessage
 import com.example.easybot.screens.theme.ColorUserMessage
 import com.example.easybot.screens.theme.Purple80
 
-
 @Composable
 fun ChatPage(
     chatId: Long,
@@ -77,7 +76,7 @@ fun MessageList(modifier: Modifier = Modifier, messageList: List<MessageModel>) 
                 contentDescription = "Icon",
                 tint = Purple80,
             )
-            Text(text = "Ask me anything", fontSize = 22.sp)
+            Text(text = "Ask me anything", fontSize = 22.sp, color = Color.Black)
         }
     } else {
         LazyColumn(
@@ -111,7 +110,7 @@ fun MessageRow(messageModel: MessageModel) {
                 Text(
                     text = messageModel.message,
                     fontWeight = FontWeight.W500,
-                    color = Color.Black // <-- Шрифт в сообщениях сделал черным
+                    color = Color.Black
                 )
             }
         }
@@ -168,7 +167,7 @@ fun AppHeader(onClear: () -> Unit = {}) {
     ) {
         Text(
             text = "Alabuga AI Bot",
-            color = Color.Black, // <-- Шрифт в шапке сделал черным
+            color = Color.White, // <-- Сделал шрифт белым
             fontSize = 26.sp,
             modifier = Modifier.weight(1f)
         )
@@ -176,7 +175,7 @@ fun AppHeader(onClear: () -> Unit = {}) {
         TextButton(onClick = onClear) {
             Text(
                 text = "Очистить",
-                color = Color.Black, // <-- Шрифт "Очистить" сделал черным
+                color = Color.White, // <-- Сделал шрифт белым
                 fontSize = 16.sp
             )
         }

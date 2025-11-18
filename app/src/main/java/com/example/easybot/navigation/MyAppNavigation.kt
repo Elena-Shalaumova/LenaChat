@@ -12,6 +12,7 @@ import com.example.easybot.screens.ChatPage
 import com.example.easybot.screens.RegistrationPage
 import com.example.easybot.screens.ChatListScreen
 import com.example.easybot.screens.ChatViewModel
+import com.example.easybot.screens.SettingsScreen
 import com.example.easybot.screens.theme.SignUpPage
 
 @Composable
@@ -27,6 +28,10 @@ fun MyAppNavigation(navController: NavHostController) {
         composable(Routes.ChatList) {
             val vm: ChatListViewModel = viewModel()
             ChatListScreen(navController = navController, viewModel = vm)
+        }
+
+        composable(Routes.Settings) { // <-- Добавил новый экран
+            SettingsScreen(navController = navController)
         }
 
         // экран конкретного чата, с параметром chatId
