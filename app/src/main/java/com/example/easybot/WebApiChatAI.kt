@@ -18,6 +18,8 @@ data class MessageDto(val id: Int, val chatId: Int, val text: String, val role: 
 data class CreateChatRequest(val title: String, val userId: Int)
 data class SendMessageRequest(val chatId: Int, val text: String)
 
+data class SettingsRequest(val id: Int, val stream: Boolean)
+
 // --- DTO для ответов ---
 data class SendMessageResponse(val userMessage: MessageDto, val aiMessage: MessageDto)
 
