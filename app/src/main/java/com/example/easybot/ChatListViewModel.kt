@@ -1,59 +1,54 @@
-package com.example.easybot.screens.theme
+package com.example.easybot
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.room.Room
-import com.example.easybot.UserSession
-import com.example.easybot.data.local.ChatRepository
-import com.example.easybot.data.local.ChatDatabase
-import com.example.easybot.data.local.ChatEntity
-import kotlinx.coroutines.flow.SharingStarted
+import com.example.easybot.data.ChatRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class ChatListViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository: ChatRepository by lazy {
-        val db = ChatDatabase.getInstance(application)
-        ChatRepository(db.chatDao())
-    }
+    private val repository = ChatRepository()
+
+    private val _chats = MutableStateFlow<List<ChatDto>>(emptyList())
+    val chats: StateFlow<List<ChatDto>> = _chats.asStateFlow()
 
     init {
-        // можешь оставить как страховку,
-        // но по идее после логина userId уже должен быть не null
-        if (UserSession.userId == null) {
-            UserSession.userId = -1L
-        }
+        loadChats()
     }
 
-    // список чатов текущего пользователя
-    val chats: StateFlow<List<ChatEntity>> =
-        repository
-            .getChatsForCurrentUser()                       // ← БЕЗ параметров
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.Lazily,
-                initialValue = emptyList()
-            )
-
-    // создать чат с дефолтным названием
-    fun createChat() {
+    fun loadChats() {
         viewModelScope.launch {
-            repository.createChat("Новый чат")              // ← только title
+            try {
+                _chats.value = repository.getChats()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Тут можно обработать ошибку, например, показать Toast
+            }
         }
     }
 
-    // если где-то нужно создавать с другим названием
     fun createChat(title: String) {
         viewModelScope.launch {
-            repository.createChat(title)                    // ← только title
+            try {
+                repository.createChat(title)
+                loadChats() // Перезагружаем список после создания
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
-    fun deleteChat(chatId: Long) {
+    fun deleteChat(chatId: Int) {
         viewModelScope.launch {
-            repository.deleteChat(chatId)
+            try {
+                repository.deleteChat(chatId)
+                loadChats() // Перезагружаем список после удаления
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }

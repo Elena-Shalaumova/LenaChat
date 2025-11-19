@@ -7,13 +7,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.example.easybot.screens.theme.ChatListViewModel
-import com.example.easybot.screens.ChatPage
-import com.example.easybot.screens.RegistrationPage
-import com.example.easybot.screens.ChatListScreen
-import com.example.easybot.screens.ChatViewModel
-import com.example.easybot.screens.SettingsScreen
-import com.example.easybot.screens.theme.SignUpPage
+import com.example.easybot.ChatListViewModel
+import com.example.easybot.screens.*
 
 @Composable
 fun MyAppNavigation(navController: NavHostController) {
@@ -26,27 +21,31 @@ fun MyAppNavigation(navController: NavHostController) {
         }
 
         composable(Routes.ChatList) {
-            val vm: ChatListViewModel = viewModel()
-            ChatListScreen(navController = navController, viewModel = vm)
+            ChatListScreen(navController = navController)
         }
 
-        composable(Routes.Settings) { // <-- Добавил новый экран
+        composable(Routes.Settings) {
             SettingsScreen(navController = navController)
         }
 
-        // экран конкретного чата, с параметром chatId
+//        composable(Routes.AdminPanel) {
+//            AdminPanelScreen(navController = navController)
+//        }
+
         composable(
-            route = "chat/{chatId}",
+            route = Routes.Chat, // "chat/{chatId}/{chatTitle}"
             arguments = listOf(
-                navArgument("chatId") { type = NavType.LongType }
+                navArgument("chatId") { type = NavType.LongType },
+                navArgument("chatTitle") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val chatId = backStackEntry.arguments?.getLong("chatId") ?: return@composable
-            val chatVm: ChatViewModel = viewModel(
-                key = "chat_$chatId"
-            )
+            val chatTitle = backStackEntry.arguments?.getString("chatTitle") ?: "Чат"
+
+            val chatVm: ChatViewModel = viewModel(key = "chat_$chatId")
             ChatPage(
                 chatId = chatId,
+                chatTitle = chatTitle, // Передаем название в UI
                 viewModel = chatVm
             )
         }

@@ -3,59 +3,51 @@ package com.example.easybot
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import retrofit2.Response
-import retrofit2.http.Body
-import retrofit2.http.POST
+import retrofit2.http.*
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
-import retrofit2.http.GET
-import retrofit2.http.Path
 
-// Классы для общения с Ollama
-data class ChatRequest(val message: String)
-data class ChatResponse(val answer: String)
+// --- DTO для чатов и сообщений ---
+data class ChatDto(val id: Int, val title: String)
+// DTO теперь содержит и chatId, т.к. сервер его возвращает
+data class MessageDto(val id: Int, val chatId: Int, val text: String, val role: Int) 
 
-// Классы для авторизации (остаются без изменений)
+// --- DTO для запросов ---
+data class CreateChatRequest(val title: String, val userId: Int)
+data class SendMessageRequest(val chatId: Int, val text: String)
+
+// --- DTO для ответов ---
+data class SendMessageResponse(val userMessage: MessageDto, val aiMessage: MessageDto)
+
+// --- DTO для авторизации ---
 data class LoginReq(val login: String, val password: String)
 
-// ---------- DTO для чатов / сообщений ----------
-data class ChatDto(
-    val id: Int,
-    val title: String,
-    val createdAt: String, // подгони под свой JSON, если нужно
-)
-
-data class MessageDto(
-    val id: Int,
-    val chatId: Int,
-    val sender: String,
-    val text: String,
-    val createdAt: String,
-)
-
-data class SendMessageRequest(
-    val chatId: Int,
-    val userId: Int,
-    val text: String, )
-
 interface WebApiChatAI {
-    // --- Новый метод для чата с Ollama ---
-    @POST("api/Ai/chat")
-    suspend fun chat(@Body request: ChatRequest): ChatResponse
 
-    // --- Чаты пользователя ---
+    // --- Чаты ---
     @GET("api/Chat/user/{userId}/chats")
     suspend fun getChats(@Path("userId") userId: Int): List<ChatDto>
 
-    // --- Сообщения чата ---
+    @POST("api/Chat")
+    suspend fun createChat(@Body request: CreateChatRequest): ChatDto
+
+    @DELETE("api/Chat/{chatId}")
+    suspend fun deleteChat(@Path("chatId") chatId: Int): Response<Unit>
+
+    @POST("api/Chat/{chatId}/clear")
+    suspend fun clearChat(@Path("chatId") chatId: Int): Response<Unit>
+
+    // --- Сообщения ---
     @GET("api/Chat/{chatId}/messages")
     suspend fun getMessages(@Path("chatId") chatId: Int): List<MessageDto>
-    // --- Отправка сообщения ---
-    @POST("api/Chat/send")
-    suspend fun sendMessage(@Body body: SendMessageRequest): MessageDto
 
-    // --- Старые методы для авторизации ---
+    // Метод теперь возвращает SendMessageResponse
+    @POST("api/Chat/send")
+    suspend fun sendMessage(@Body body: SendMessageRequest): SendMessageResponse
+
+    // --- Авторизация ---
     @POST("api/WebAPIChatAI/AddUser")
     suspend fun addUser(@Body user: RegisterDto): Response<UserDto>
 
@@ -64,10 +56,7 @@ interface WebApiChatAI {
 }
 
 fun provideApi(baseUrl: String = "http://10.0.2.2:5167/"): WebApiChatAI {
-    val moshi = Moshi.Builder()
-        .add(KotlinJsonAdapterFactory())
-        .build()
-
+    val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
     val log = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
     val client = OkHttpClient.Builder().addInterceptor(log).build()
 

@@ -19,16 +19,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.example.easybot.data.local.ChatEntity
+import com.example.easybot.ChatDto
+import com.example.easybot.ChatListViewModel
 import com.example.easybot.navigation.Routes
-import com.example.easybot.screens.theme.ChatListViewModel
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @Composable
 fun ChatListScreen(
     navController: NavHostController,
     viewModel: ChatListViewModel = viewModel()
 ) {
-    val chats: List<ChatEntity> by viewModel.chats.collectAsState(initial = emptyList())
+    val chats by viewModel.chats.collectAsState()
 
     Scaffold(
         containerColor = Color(0xFFE8F5FE),
@@ -57,9 +59,10 @@ fun ChatListScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    val index = chats.size + 1
-                    viewModel.createChat("Новый чат #$index")
+                onClick = { 
+                    // Добавляем индекс к названию нового чата
+                    val nextChatNumber = chats.size + 1
+                    viewModel.createChat("Новый чат #$nextChatNumber") 
                 },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
@@ -96,11 +99,11 @@ fun ChatListScreen(
                     ChatRow(
                         chat = chat,
                         onOpen = {
-                            navController.navigate("chat/${chat.id}")
+                            // Кодируем заголовок, чтобы безопасно передать его в пути
+                            val encodedTitle = URLEncoder.encode(chat.title, StandardCharsets.UTF_8.toString())
+                            navController.navigate("chat/${chat.id}/${encodedTitle}")
                         },
-                        onDelete = {
-                            viewModel.deleteChat(chat.id)
-                        }
+                        onDelete = { viewModel.deleteChat(chat.id) }
                     )
                 }
             }
@@ -110,7 +113,7 @@ fun ChatListScreen(
 
 @Composable
 private fun ChatRow(
-    chat: ChatEntity,
+    chat: ChatDto, // <-- Теперь принимаем ChatDto
     onOpen: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -118,9 +121,7 @@ private fun ChatRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onOpen() },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -129,16 +130,12 @@ private fun ChatRow(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
+            Text(
+                text = chat.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
                 modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = chat.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White
-                )
-            }
-
+            )
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,
