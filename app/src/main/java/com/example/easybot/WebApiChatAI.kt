@@ -17,6 +17,7 @@ data class MessageDto(val id: Int, val chatId: Int, val text: String, val role: 
 // --- DTO для запросов ---
 data class CreateChatRequest(val title: String, val userId: Int)
 data class SendMessageRequest(val chatId: Int, val text: String)
+data class SettingsRequest(val id: Int, val stream: Boolean)
 
 // --- DTO для ответов ---
 data class SendMessageResponse(val userMessage: MessageDto, val aiMessage: MessageDto)
@@ -53,6 +54,10 @@ interface WebApiChatAI {
 
     @POST("api/WebAPIChatAI/Login")
     suspend fun login(@Body req: LoginReq): Response<UserDto>
+
+    // --- Настройки ---
+    @POST("api/Settings")
+    suspend fun saveSettings(@Body request: SettingsRequest): Response<Unit>
 }
 
 fun provideApi(baseUrl: String = "http://10.0.2.2:5167/"): WebApiChatAI {
