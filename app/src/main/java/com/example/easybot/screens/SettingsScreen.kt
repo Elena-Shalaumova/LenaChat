@@ -30,6 +30,7 @@ import com.example.easybot.SettingsRequest
 import com.example.easybot.provideApi
 import com.example.easybot.navigation.Routes
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.LaunchedEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +41,29 @@ fun SettingsScreen(navController: NavController) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val api = remember { provideApi() }
+    val userId = (UserSession.userId ?: 0L).toInt()
+    var selectedModel by remember { mutableStateOf("qwen2.5") }
+    var isModelDropdownExpanded by remember { mutableStateOf(false) }
+
+// список моделей Ollama – МЕНЯЙ под свои реальные теги
+    val ollamaModels = listOf(
+        "qwen:0.5b",
+        "qwen2.5",
+        "llama3.1",
+    )
+
+    LaunchedEffect(userId) {
+        try {
+            val settings = api.getSettings(userId)
+
+            streamEnabled = settings.stream        // включить/выключить тумблер
+            selectedModel = settings.model ?: "qwen2.5"
+
+        } catch (e: Exception) {
+            // если настроек нет — оставляем значения по умолчанию
+            e.printStackTrace()
+        }
+    }
 
     Scaffold(
         containerColor = Color.White,
@@ -110,6 +134,47 @@ fun SettingsScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            Text(
+                text = "Модель ИИ (Ollama)",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.Black
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            ExposedDropdownMenuBox(
+                expanded = isModelDropdownExpanded,
+                onExpandedChange = { isModelDropdownExpanded = !isModelDropdownExpanded }
+            ) {
+                TextField(
+                    value = selectedModel,
+                    onValueChange = { }, // только выбор из списка
+                    readOnly = true,
+                    label = { Text("Выберите модель") },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = isModelDropdownExpanded)
+                    },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = isModelDropdownExpanded,
+                    onDismissRequest = { isModelDropdownExpanded = false }
+                ) {
+                    ollamaModels.forEach { modelName ->
+                        DropdownMenuItem(
+                            text = { Text(modelName) },
+                            onClick = {
+                                selectedModel = modelName
+                                isModelDropdownExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
             Button(
                 onClick = { navController.navigate(Routes.AdminPanel) },
                 colors = ButtonDefaults.buttonColors(
@@ -134,7 +199,7 @@ fun SettingsScreen(navController: NavController) {
                         isLoading = true
                         try {
                             val response = api.saveSettings(
-                                SettingsRequest(id = userId, stream = streamEnabled)
+                                SettingsRequest(id = userId, stream = streamEnabled, model=selectedModel)
                             )
                             if (response.isSuccessful) {
                                 Toast.makeText(context, "Настройки сохранены", Toast.LENGTH_SHORT).show()
