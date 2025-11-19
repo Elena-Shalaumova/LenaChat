@@ -12,12 +12,11 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 // --- DTO для чатов и сообщений ---
 data class ChatDto(val id: Int, val title: String)
 // DTO теперь содержит и chatId, т.к. сервер его возвращает
-data class MessageDto(val id: Int, val chatId: Int, val text: String, val role: Int) 
+data class MessageDto(val id: Int, val chatId: Int, val text: String, val role: Int)
 
 // --- DTO для запросов ---
 data class CreateChatRequest(val title: String, val userId: Int)
 data class SendMessageRequest(val chatId: Int, val text: String)
-
 data class SettingsRequest(val id: Int, val stream: Boolean)
 
 // --- DTO для ответов ---
@@ -55,6 +54,10 @@ interface WebApiChatAI {
 
     @POST("api/WebAPIChatAI/Login")
     suspend fun login(@Body req: LoginReq): Response<UserDto>
+
+    // --- Настройки ---
+    @POST("api/Settings")
+    suspend fun saveSettings(@Body request: SettingsRequest): Response<Unit>
 }
 
 fun provideApi(baseUrl: String = "http://10.0.2.2:5167/"): WebApiChatAI {
