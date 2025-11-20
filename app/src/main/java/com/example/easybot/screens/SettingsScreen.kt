@@ -28,7 +28,6 @@ import androidx.navigation.NavController
 import com.example.easybot.UserSession
 import com.example.easybot.SettingsRequest
 import com.example.easybot.provideApi
-import com.example.easybot.navigation.Routes
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
 
@@ -42,26 +41,79 @@ fun SettingsScreen(navController: NavController) {
     val coroutineScope = rememberCoroutineScope()
     val api = remember { provideApi() }
     val userId = (UserSession.userId ?: 0L).toInt()
-    var selectedModel by remember { mutableStateOf("qwen2.5") }
+    var selectedModel by remember { mutableStateOf("") }
     var isModelDropdownExpanded by remember { mutableStateOf(false) }
+    var ollamaVersion by remember { mutableStateOf<String?>(null) }
+    var ollamaModels by remember { mutableStateOf<List<String>>(emptyList()) }
 
-// список моделей Ollama – МЕНЯЙ под свои реальные теги
-    val ollamaModels = listOf(
-        "qwen:0.5b",
-        "qwen2.5",
-        "llama3.1",
-    )
 
     LaunchedEffect(userId) {
+//        try {
+//            val settings = api.getSettings(userId)
+//            streamEnabled = settings.stream        // включить/выключить тумблер
+//            selectedModel = settings.model ?: ""
+//        } catch (e: Exception) {
+//            // если настроек нет — оставляем значения по умолчанию
+//            e.printStackTrace()
+//        }
+//        try {
+//            val versionDto = api.getOllamaVersion()
+//            ollamaVersion = versionDto.version
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            ollamaVersion = "неизвестна"
+//        }
+        // 1. Сначала загружаем список моделей из Ollama
+        try {
+            val modelsDto = api.getAvailableModels()          // <- твой метод
+            ollamaModels = modelsDto               // или как у тебя поле называется
+        } catch (e: Exception) {
+            e.printStackTrace()
+            ollamaModels = emptyList()
+        }
+
+        // 2. Пытаемся получить настройки пользователя
         try {
             val settings = api.getSettings(userId)
 
-            streamEnabled = settings.stream        // включить/выключить тумблер
-            selectedModel = settings.model ?: "qwen2.5"
+            streamEnabled = settings.stream
+            // если в настройках модель пустая — берём первую из списка
+            selectedModel = settings.model?.takeIf { it.isNotBlank() }
+                ?: ollamaModels.firstOrNull().orEmpty()
 
+        } catch (e: retrofit2.HttpException) {
+            // 404 – настроек нет, создаём дефолтные
+            if (e.code() == 404) {
+                val defaultModel = ollamaModels.firstOrNull()
+
+                // выставляем в UI
+                selectedModel = defaultModel.orEmpty()
+                streamEnabled = false
+
+                if (defaultModel != null) {
+                    // 3. Отправляем на бэк создание настроек по умолчанию
+                    try {
+                        val response = api.saveSettings(
+                            SettingsRequest(id = userId, stream = streamEnabled, model = selectedModel)
+                        )
+                    } catch (saveEx: Exception) {
+                        saveEx.printStackTrace()
+                    }
+                }
+            } else {
+                e.printStackTrace()
+            }
         } catch (e: Exception) {
-            // если настроек нет — оставляем значения по умолчанию
             e.printStackTrace()
+        }
+
+        // 4. Версию Ollama (как у тебя было)
+        try {
+            val versionDto = api.getOllamaVersion()
+            ollamaVersion = versionDto.version
+        } catch (e: Exception) {
+            e.printStackTrace()
+            ollamaVersion = "неизвестна"
         }
     }
 
@@ -100,11 +152,18 @@ fun SettingsScreen(navController: NavController) {
             Text(
                 text = "Логин: $userLogin",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
+                fontWeight = FontWeight.Normal,
+                color = Color.DarkGray
             )
 
             Spacer(modifier = Modifier.height(32.dp))
+
+
+            Text(
+                text = "Версия Ollama: $ollamaVersion",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -173,58 +232,66 @@ fun SettingsScreen(navController: NavController) {
                 }
             }
 
-                Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(32.dp)) // Увеличим отступ перед кнопками
 
-            Button(
-                onClick = { navController.navigate(Routes.AdminPanel) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White
-                )
-            ) {
-                Text("Админ-панель")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    val userId = UserSession.userId?.toInt()
-                    if (userId == null) {
-                        Toast.makeText(context, "Пользователь не авторизован", Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
-
-                    coroutineScope.launch {
-                        isLoading = true
-                        try {
-                            val response = api.saveSettings(
-                                SettingsRequest(id = userId, stream = streamEnabled, model=selectedModel)
-                            )
-                            if (response.isSuccessful) {
-                                Toast.makeText(context, "Настройки сохранены", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, "Не удалось сохранить настройки", Toast.LENGTH_SHORT).show()
-                            }
-                        } catch (e: Exception) {
-                            Toast.makeText(
-                                context,
-                                "Ошибка: ${e.message ?: "неизвестная"}",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        } finally {
-                            isLoading = false
-                        }
-                    }
-                },
-                enabled = !isLoading,
+            // Оборачиваем кнопки в Row для горизонтального расположения
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isLoading) Color.Gray else MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White
-                )
+                horizontalArrangement = Arrangement.spacedBy(16.dp), // Пространство между кнопками
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(if (isLoading) "Сохранение..." else "Сохранить")
+                // Кнопка "Сброс" (муляж)
+                OutlinedButton(
+                    onClick = {
+                        // TODO: Добавить логику сброса настроек
+                        Toast.makeText(context, "Сброс (пока не работает)", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.weight(1f), // Занимает половину доступного пространства
+                    enabled = !isLoading
+                ) {
+                    Text("Сброс")
+                }
+
+                // Существующая кнопка "Сохранить"
+                Button(
+                    onClick = {
+                        val userId = UserSession.userId?.toInt()
+                        if (userId == null) {
+                            Toast.makeText(context, "Пользователь не авторизован", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+
+                        coroutineScope.launch {
+                            isLoading = true
+                            try {
+                                val response = api.saveSettings(
+                                    SettingsRequest(id = userId, stream = streamEnabled, model = selectedModel)
+                                )
+                                if (response.isSuccessful) {
+                                    Toast.makeText(context, "Настройки сохранены", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Не удалось сохранить настройки", Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(
+                                    context,
+                                    "Ошибка: ${e.message ?: "неизвестная"}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } finally {
+                                isLoading = false
+                            }
+                        }
+                    },
+                    enabled = !isLoading,
+                    modifier = Modifier.weight(1f), // Занимает вторую половину пространства
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isLoading) Color.Gray else MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text(if (isLoading) "Сохранение..." else "Сохранить")
+                }
             }
         }
     }

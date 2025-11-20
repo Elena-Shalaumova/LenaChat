@@ -9,15 +9,19 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 
+// --- DTO для настроек ---
+data class SettingsDto(val id: Int, val userId: Int, val stream: Boolean, val model: String?)
+data class SettingsRequest(val id: Int, val stream: Boolean, val model: String)
+data class OllamaVersionDto(val version: String)
+data class OllamaModels(val models: List<String>)
+
 // --- DTO для чатов и сообщений ---
 data class ChatDto(val id: Int, val title: String)
-// DTO теперь содержит и chatId, т.к. сервер его возвращает
-data class MessageDto(val id: Int, val chatId: Int, val text: String, val role: Int)
+data class MessageDto(val id: Int, val chatId: Int, val text: String, val role: Int) 
 
 // --- DTO для запросов ---
 data class CreateChatRequest(val title: String, val userId: Int)
 data class SendMessageRequest(val chatId: Int, val text: String)
-data class SettingsRequest(val id: Int, val stream: Boolean,  val model: String)
 
 // --- DTO для ответов ---
 data class SendMessageResponse(val userMessage: MessageDto, val aiMessage: MessageDto)
@@ -25,14 +29,28 @@ data class SendMessageResponse(val userMessage: MessageDto, val aiMessage: Messa
 // --- DTO для авторизации ---
 data class LoginReq(val login: String, val password: String)
 
-data class SettingsDto(
-    val id: Int,
-    val userId: Int,
-    val stream: Boolean,
-    val model: String
-)
+// Для общения с нейросетью
+data class ChatRequest(val message: String)
+data class ChatResponse(val answer: String)
 
 interface WebApiChatAI {
+
+    // --- Настройки ---
+    @GET("api/settings/{userId}")
+    suspend fun getSettings(@Path("userId") userId: Int): SettingsDto
+
+    @POST("api/settings/save")
+    suspend fun saveSettings(@Body request: SettingsRequest): Response<Unit>
+
+    @GET("api/Ai/models")
+    suspend fun getAvailableModels(): List<String>
+
+    @GET("api/Ai/ollama-version")
+    suspend fun getOllamaVersion(): OllamaVersionDto
+
+    // --- Админка ---
+    @GET("api/admin/users")
+    suspend fun getAllUsers(): List<UserDto>
 
     // --- Чаты ---
     @GET("api/Chat/user/{userId}/chats")
@@ -51,24 +69,18 @@ interface WebApiChatAI {
     @GET("api/Chat/{chatId}/messages")
     suspend fun getMessages(@Path("chatId") chatId: Int): List<MessageDto>
 
-    // Метод теперь возвращает SendMessageResponse
     @POST("api/Chat/send")
     suspend fun sendMessage(@Body body: SendMessageRequest): SendMessageResponse
 
-    // --- Авторизация ---
     @POST("api/WebAPIChatAI/AddUser")
     suspend fun addUser(@Body user: RegisterDto): Response<UserDto>
 
     @POST("api/WebAPIChatAI/Login")
     suspend fun login(@Body req: LoginReq): Response<UserDto>
-
-    // --- Настройки ---
-    @POST("api/Settings")
-    suspend fun saveSettings(@Body request: SettingsRequest): Response<Unit>
-
-    @GET("api/Settings/{id}")
-    suspend fun getSettings(@Path("id") id: Int): SettingsDto
-
+    
+    // --- Ollama (если используется через сервер) ---
+    @POST("api/Ai/chat")
+    suspend fun chat(@Body request: ChatRequest): ChatResponse
 }
 
 fun provideApi(baseUrl: String = "http://10.0.2.2:5167/"): WebApiChatAI {
