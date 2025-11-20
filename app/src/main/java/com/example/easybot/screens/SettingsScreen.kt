@@ -30,6 +30,7 @@ import com.example.easybot.SettingsRequest
 import com.example.easybot.provideApi
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
+import retrofit2.HttpException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,28 +46,14 @@ fun SettingsScreen(navController: NavController) {
     var isModelDropdownExpanded by remember { mutableStateOf(false) }
     var ollamaVersion by remember { mutableStateOf<String?>(null) }
     var ollamaModels by remember { mutableStateOf<List<String>>(emptyList()) }
-
+    var availableModels by remember { mutableStateOf<List<String>>(emptyList()) }
 
     LaunchedEffect(userId) {
-//        try {
-//            val settings = api.getSettings(userId)
-//            streamEnabled = settings.stream        // включить/выключить тумблер
-//            selectedModel = settings.model ?: ""
-//        } catch (e: Exception) {
-//            // если настроек нет — оставляем значения по умолчанию
-//            e.printStackTrace()
-//        }
-//        try {
-//            val versionDto = api.getOllamaVersion()
-//            ollamaVersion = versionDto.version
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//            ollamaVersion = "неизвестна"
-//        }
-        // 1. Сначала загружаем список моделей из Ollama
+
+        // 1. Сначала загружаем список моделей из Ollama через твой WebAPI
         try {
-            val modelsDto = api.getAvailableModels()          // <- твой метод
-            ollamaModels = modelsDto               // или как у тебя поле называется
+            val models = api.getAvailableModels()   // с бэка → /api/tags
+            ollamaModels = models
         } catch (e: Exception) {
             e.printStackTrace()
             ollamaModels = emptyList()
@@ -77,24 +64,24 @@ fun SettingsScreen(navController: NavController) {
             val settings = api.getSettings(userId)
 
             streamEnabled = settings.stream
-            // если в настройках модель пустая — берём первую из списка
-            selectedModel = settings.model?.takeIf { it.isNotBlank() }
-                ?: ollamaModels.firstOrNull().orEmpty()
+            selectedModel = settings.model ?: ""
 
-        } catch (e: retrofit2.HttpException) {
-            // 404 – настроек нет, создаём дефолтные
+        } catch (e: HttpException) {
+            // 404 – настроек ещё нет, создаём дефолтные
             if (e.code() == 404) {
                 val defaultModel = ollamaModels.firstOrNull()
 
-                // выставляем в UI
-                selectedModel = defaultModel.orEmpty()
                 streamEnabled = false
+                selectedModel = defaultModel.orEmpty()
 
                 if (defaultModel != null) {
-                    // 3. Отправляем на бэк создание настроек по умолчанию
                     try {
-                        val response = api.saveSettings(
-                            SettingsRequest(id = userId, stream = streamEnabled, model = selectedModel)
+                        api.saveSettings(
+                            SettingsRequest(
+                                id = userId,
+                                stream = streamEnabled,
+                                model = selectedModel
+                            )
                         )
                     } catch (saveEx: Exception) {
                         saveEx.printStackTrace()
@@ -107,7 +94,35 @@ fun SettingsScreen(navController: NavController) {
             e.printStackTrace()
         }
 
-        // 4. Версию Ollama (как у тебя было)
+        // 3. Проверяем, есть ли выбранная модель в списке моделей из Ollama
+        if (ollamaModels.isNotEmpty() && selectedModel.isNotBlank() && selectedModel !in ollamaModels) {
+            val fallback = ollamaModels.first()
+
+            Toast.makeText(
+                context,
+                "Модель \"$selectedModel\" не найдена в Ollama. Выбрана \"$fallback\".",
+                Toast.LENGTH_LONG
+            ).show()
+
+            // обновляем UI
+            selectedModel = fallback
+
+            // И ВАЖНО: сразу же сохраняем исправленную модель в БД
+            try {
+                api.saveSettings(
+                    SettingsRequest(
+                        id = userId,
+                        stream = streamEnabled,   // текущее значение свитча
+                        model = fallback          // новая корректная модель
+                    )
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Toast.makeText(context, "Не удалось обновить настройки", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // 4. Версия Ollama (как у тебя было)
         try {
             val versionDto = api.getOllamaVersion()
             ollamaVersion = versionDto.version
@@ -216,6 +231,7 @@ fun SettingsScreen(navController: NavController) {
                         .menuAnchor()
                         .fillMaxWidth()
                 )
+                //Меню выпадающего списка
                 ExposedDropdownMenu(
                     expanded = isModelDropdownExpanded,
                     onDismissRequest = { isModelDropdownExpanded = false }
@@ -230,6 +246,8 @@ fun SettingsScreen(navController: NavController) {
                         )
                     }
                 }
+
+
             }
 
             Spacer(modifier = Modifier.height(32.dp)) // Увеличим отступ перед кнопками
@@ -240,59 +258,52 @@ fun SettingsScreen(navController: NavController) {
                 horizontalArrangement = Arrangement.spacedBy(16.dp), // Пространство между кнопками
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Кнопка "Сброс" (муляж)
-                OutlinedButton(
-                    onClick = {
-                        // TODO: Добавить логику сброса настроек
-                        Toast.makeText(context, "Сброс (пока не работает)", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier.weight(1f), // Занимает половину доступного пространства
-                    enabled = !isLoading
-                ) {
-                    Text("Сброс")
-                }
 
-                // Существующая кнопка "Сохранить"
-                Button(
-                    onClick = {
-                        val userId = UserSession.userId?.toInt()
-                        if (userId == null) {
-                            Toast.makeText(context, "Пользователь не авторизован", Toast.LENGTH_SHORT).show()
-                            return@Button
-                        }
+            }
 
-                        coroutineScope.launch {
-                            isLoading = true
-                            try {
-                                val response = api.saveSettings(
-                                    SettingsRequest(id = userId, stream = streamEnabled, model = selectedModel)
-                                )
-                                if (response.isSuccessful) {
-                                    Toast.makeText(context, "Настройки сохранены", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(context, "Не удалось сохранить настройки", Toast.LENGTH_SHORT).show()
-                                }
-                            } catch (e: Exception) {
-                                Toast.makeText(
-                                    context,
-                                    "Ошибка: ${e.message ?: "неизвестная"}",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            } finally {
-                                isLoading = false
+            // Существующая кнопка "Сохранить"
+            Button(
+                onClick = {
+                    val userId = UserSession.userId?.toInt()
+                    if (userId == null) {
+                        Toast.makeText(context, "Пользователь не авторизован", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    coroutineScope.launch {
+                        isLoading = true
+                        try {
+                            val response = api.saveSettings(
+                                SettingsRequest(id = userId, stream = streamEnabled, model = selectedModel)
+                            )
+                            if (response.isSuccessful) {
+                                Toast.makeText(context, "Настройки сохранены", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Не удалось сохранить настройки", Toast.LENGTH_SHORT).show()
                             }
+                        } catch (e: Exception) {
+                            Toast.makeText(
+                                context,
+                                "Ошибка: ${e.message ?: "неизвестная"}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } finally {
+                            isLoading = false
                         }
-                    },
-                    enabled = !isLoading,
-                    modifier = Modifier.weight(1f), // Занимает вторую половину пространства
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isLoading) Color.Gray else MaterialTheme.colorScheme.primary,
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text(if (isLoading) "Сохранение..." else "Сохранить")
-                }
+                    }
+                },
+                enabled = !isLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isLoading) Color.Gray else MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
+                )
+            ) {
+                Text(if (isLoading) "Сохранение..." else "Сохранить")
             }
         }
     }
 }
+//}
