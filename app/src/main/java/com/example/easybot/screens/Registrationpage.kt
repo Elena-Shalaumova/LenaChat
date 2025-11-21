@@ -1,5 +1,6 @@
 package com.example.easybot.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -17,12 +19,21 @@ import androidx.navigation.NavController
 import com.example.easybot.R
 import com.example.easybot.navigation.Routes
 import com.example.easybot.UserSession
+import android.view.Gravity
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+
 
 @Composable
 fun RegistrationPage(
     nav: NavController,
     vm: RegistrationpageVM = viewModel()
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -85,6 +96,17 @@ fun RegistrationPage(
         Button(
             onClick = {
                 vm.signIn { user ->
+
+                    // 🔥 Уведомление про автосмену модели
+                    if (user.modelChanged) {
+                        Toast.makeText(
+                            context,
+                            "Модель поменялась автоматически на актуальную: ${user.model ?: "неизвестно"}",
+                            Toast.LENGTH_LONG
+                        ).show()
+
+                    }
+
                     UserSession.userId = user.id?.toLong()
                     UserSession.login = user.login
                     nav.navigate(Routes.ChatList) {
@@ -104,6 +126,17 @@ fun RegistrationPage(
         TextButton(
             onClick = {
                 vm.signUp { user ->
+
+                    // 🔥 Уведомление про автосмену модели
+                    if (user.modelChanged) {
+                        Toast.makeText(
+                            context,
+                            "Модель поменялась автоматически на актуальную: ${user.model ?: "неизвестно"}",
+                            Toast.LENGTH_LONG
+
+                        ).show()
+                    }
+
                     UserSession.userId = user.id?.toLong()
                     UserSession.login = user.login
                     nav.navigate(Routes.ChatList) {

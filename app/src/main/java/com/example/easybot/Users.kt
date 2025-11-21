@@ -8,6 +8,8 @@ data class UserDto(
     val salt: String? = null,
     val iterations: Int? = null,
     val is_hashed: Boolean? = false,
+    val modelChanged: Boolean = false,
+    val model: String? = null
 )
 
 class Users {

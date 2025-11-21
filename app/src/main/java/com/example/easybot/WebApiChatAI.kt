@@ -33,6 +33,15 @@ data class LoginReq(val login: String, val password: String)
 data class ChatRequest(val message: String)
 data class ChatResponse(val answer: String)
 
+//data class LoginResponse(
+//    val id: Int,
+//    val login: String,
+//    val createdAt: String?,
+//    val modelChanged: Boolean,
+//    val model: String?
+//)
+
+
 interface WebApiChatAI {
 
     // --- Настройки ---

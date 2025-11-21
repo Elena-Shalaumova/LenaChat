@@ -37,6 +37,7 @@ class RegistrationpageVM(private val api: WebApiChatAI = provideApi()
                 } ?: run {
                     error = "Пустой ответ сервера"
                 }
+
             } else {
                 error = when (resp.code()) {
                     401 -> "Неверный логин/пароль"
@@ -67,9 +68,9 @@ class RegistrationpageVM(private val api: WebApiChatAI = provideApi()
             // Отправляем на сервер
             val response = api.addUser(registerDto)
 
-            if (response.isSuccessful) {
-                response.body()?.let(onSuccess) ?: run { error = "Пустой ответ от сервера" }
-            } else {
+                if (response.isSuccessful) {
+                    response.body()?.let(onSuccess) ?: run { error = "Пустой ответ от сервера" }
+                } else {
                 // Обрабатываем ошибки, которые возвращает твой API
                 error = when (response.code()) {
                     400 -> "Логин и пароль обязательны"
