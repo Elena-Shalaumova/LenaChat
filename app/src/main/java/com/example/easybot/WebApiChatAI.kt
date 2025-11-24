@@ -17,7 +17,9 @@ data class OllamaModels(val models: List<String>)
 
 // --- DTO для чатов и сообщений ---
 data class ChatDto(val id: Int, val title: String)
-data class MessageDto(val id: Int, val chatId: Int, val text: String, val role: Int) 
+//data class MessageDto(val id: Int, val chatId: Int, val text: String, val role: Int)
+data class MessageDto(val id: Int, val chatId: Int, val role: Int, val type: String,val text: String?, val base64Image: String?, val createdAt: String? )
+
 
 // --- DTO для запросов ---
 data class CreateChatRequest(val title: String, val userId: Int)
@@ -32,6 +34,14 @@ data class LoginReq(val login: String, val password: String)
 // Для общения с нейросетью
 data class ChatRequest(val message: String)
 data class ChatResponse(val answer: String)
+
+//DTO для отправки КАРТИНКИ
+data class SendImageMessageRequest(
+    val chatId: Int,
+    val userId: Int,
+    val prompt: String?,      // объект text для картинки
+    val base64Image: String   // обязательный base64
+)
 
 //data class LoginResponse(
 //    val id: Int,
@@ -90,6 +100,11 @@ interface WebApiChatAI {
     // --- Ollama (если используется через сервер) ---
     @POST("api/Ai/chat")
     suspend fun chat(@Body request: ChatRequest): ChatResponse
+
+    @POST("api/Chat/send-image")
+    suspend fun sendImageMessage(@Body request: SendImageMessageRequest): SendMessageResponse
+
+
 }
 
 fun provideApi(baseUrl: String = "http://10.0.2.2:5167/"): WebApiChatAI {

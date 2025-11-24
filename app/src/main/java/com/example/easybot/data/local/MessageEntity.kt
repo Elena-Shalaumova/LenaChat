@@ -20,7 +20,11 @@ import androidx.room.PrimaryKey
 data class MessageEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val chatId: Long,
-    val role: String,
-    val message: String,      // именно message, не text
-    val createdAt: Long = System.currentTimeMillis()       // System.currentTimeMillis() будем передавать снаружи
+    val role: Int,  // 1 user, 0 assistant
+    val type: String,            // "text" / "image"
+    val text: String?,
+    val imageBase64: String?,
+    val createdAt: Long
+    //val message: String,      // именно message, не text
+    //val createdAt: Long = System.currentTimeMillis()       // System.currentTimeMillis() будем передавать снаружи
 )
