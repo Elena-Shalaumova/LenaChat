@@ -23,7 +23,12 @@ data class MessageDto(val id: Int, val chatId: Int, val role: Int, val type: Str
 
 // --- DTO для запросов ---
 data class CreateChatRequest(val title: String, val userId: Int)
-data class SendMessageRequest(val chatId: Int, val text: String)
+data class SendMessageRequest(
+    val chatId: Int,
+    val userId: Int,
+    val text: String?,        // может быть null для чистой картинки
+    val base64Image: String?  // null для обычного текста
+)
 
 // --- DTO для ответов ---
 data class SendMessageResponse(val userMessage: MessageDto, val aiMessage: MessageDto)
@@ -89,7 +94,9 @@ interface WebApiChatAI {
     suspend fun getMessages(@Path("chatId") chatId: Int): List<MessageDto>
 
     @POST("api/Chat/send")
-    suspend fun sendMessage(@Body body: SendMessageRequest): SendMessageResponse
+    suspend fun sendMessage(
+        @Body request: SendMessageRequest
+    ): SendMessageResponse
 
     @POST("api/WebAPIChatAI/AddUser")
     suspend fun addUser(@Body user: RegisterDto): Response<UserDto>
@@ -101,8 +108,8 @@ interface WebApiChatAI {
     @POST("api/Ai/chat")
     suspend fun chat(@Body request: ChatRequest): ChatResponse
 
-    @POST("api/Chat/send-image")
-    suspend fun sendImageMessage(@Body request: SendImageMessageRequest): SendMessageResponse
+   // @POST("api/Chat/send-image")
+   // suspend fun sendImageMessage(@Body request: SendImageMessageRequest): SendMessageResponse
 
 
 }

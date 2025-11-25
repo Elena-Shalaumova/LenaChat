@@ -2,13 +2,13 @@ package com.example.easybot.data
 
 import com.example.easybot.*
 import com.example.easybot.data.mappers.toModels
-import com.example.easybot.data.mappers.toModel
 import com.example.easybot.screens.theme.MessageModel
 
 class ChatRepository(
     private val api: WebApiChatAI = provideApi(),
 ) {
-    private fun getUserId(): Int = UserSession.userId?.toInt() ?: error("User not logged in")
+    private fun getUserId(): Int =
+        UserSession.userId?.toInt() ?: error("User not logged in")
 
     // ---- Чаты ----
     suspend fun getChats(): List<ChatDto> {
@@ -34,23 +34,32 @@ class ChatRepository(
         return dtos.toModels()
     }
 
-    // Метод теперь возвращает SendMessageResponse
-    suspend fun sendMessage(chatId: Int, text: String): SendMessageResponse {
-        val request = SendMessageRequest(chatId = chatId, text = text)
+    // ------- ТЕКСТОВОЕ СООБЩЕНИЕ -------
+    suspend fun sendTextMessage(
+        chatId: Int,
+        text: String
+    ): SendMessageResponse {
+        val request = SendMessageRequest(
+            chatId = chatId,
+            userId = getUserId(),
+            text = text,
+            base64Image = null          // без картинки
+        )
         return api.sendMessage(request)
     }
-    // сообщение с КАРТИНКОЙ
+
+    // ------- СООБЩЕНИЕ С КАРТИНКОЙ -------
     suspend fun sendImageMessage(
         chatId: Int,
         base64Image: String,
-        prompt: String? = null
+        prompt: String? = null         // текст к картинке, можно null
     ): SendMessageResponse {
-        val request = SendImageMessageRequest(
+        val request = SendMessageRequest(
             chatId = chatId,
             userId = getUserId(),
-            prompt = prompt,
-            base64Image = base64Image
+            text = prompt,               // это пойдёт в C# как Text
+            base64Image = base64Image    // а это Base64Image
         )
-        return api.sendImageMessage(request)
+        return api.sendMessage(request)
     }
 }
