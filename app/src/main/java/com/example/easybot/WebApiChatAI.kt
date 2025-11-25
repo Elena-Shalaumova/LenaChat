@@ -8,6 +8,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.util.concurrent.TimeUnit
 
 // --- DTO для настроек ---
 data class SettingsDto(val id: Int, val userId: Int, val stream: Boolean, val model: String?)
@@ -47,14 +48,6 @@ data class SendImageMessageRequest(
     val prompt: String?,      // объект text для картинки
     val base64Image: String   // обязательный base64
 )
-
-//data class LoginResponse(
-//    val id: Int,
-//    val login: String,
-//    val createdAt: String?,
-//    val modelChanged: Boolean,
-//    val model: String?
-//)
 
 
 interface WebApiChatAI {
@@ -116,8 +109,17 @@ interface WebApiChatAI {
 
 fun provideApi(baseUrl: String = "http://10.0.2.2:5167/"): WebApiChatAI {
     val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+
     val log = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
-    val client = OkHttpClient.Builder().addInterceptor(log).build()
+    //val client = OkHttpClient.Builder().addInterceptor(log).build()
+    val client = OkHttpClient.Builder()
+        .addInterceptor(log)
+        .connectTimeout(60, TimeUnit.SECONDS)          // подключение к серверу
+        .writeTimeout(5, TimeUnit.MINUTES)             // загрузка текста/картинки
+        .readTimeout(0, TimeUnit.SECONDS)              // ❗ ждать бесконечно
+        .callTimeout(0, TimeUnit.MILLISECONDS)         // ❗ полный запрет глобального timeout
+        .retryOnConnectionFailure(true)                // авто-повтор при обрыве соединения
+        .build()
 
     return Retrofit.Builder()
         .baseUrl(baseUrl)
