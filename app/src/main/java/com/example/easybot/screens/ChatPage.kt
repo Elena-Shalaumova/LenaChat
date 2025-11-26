@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.easybot.R
-import com.example.easybot.screens.theme.MessageModel    // UI-модель сообщения
+import com.example.easybot.screens.theme.MessageModel
 import com.example.easybot.screens.theme.ModelMessageGrey
 import com.example.easybot.screens.theme.UserMessageBlue
 import java.io.ByteArrayOutputStream
@@ -54,6 +54,9 @@ fun ChatPage(
     val messages by viewModel.messages.collectAsState()
     val context = LocalContext.current
 
+    // ---- тут храним "прикреплённую" картинку для следующего сообщения ----
+    var pendingImageBase64 by remember { mutableStateOf<String?>(null) }
+
     // ---------- ЛАУНЧЕР ГАЛЕРЕИ ----------
     val imagePickerLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -66,11 +69,8 @@ fun ChatPage(
 
                     val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
 
-                    // отправляем картинку во ViewModel
-                    viewModel.sendImageMessage(
-                        base64Image = base64,
-                        prompt = null          // при желании можно добавить подпись к картинке
-                    )
+                    // НЕ отправляем сразу, а прикрепляем к следующему сообщению
+                    pendingImageBase64 = base64
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -81,8 +81,8 @@ fun ChatPage(
     val cameraLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
             bitmap?.let { captured ->
-                // Bitmap → base64 → отправка
-                sendBitmapToViewModel(captured, viewModel)
+                // Bitmap → base64 → тоже просто прикрепляем
+                pendingImageBase64 = bitmapToBase64(captured)
             }
         }
 
@@ -111,7 +111,22 @@ fun ChatPage(
 
         // ---------- НИЖНЯЯ ПАНЕЛЬ ВВОДА ----------
         MessageInput(
-            onMessageSend = { text -> viewModel.sendMessage(text) },
+            hasAttachment = pendingImageBase64 != null,
+            onMessageSend = { text ->
+                val img = pendingImageBase64
+
+                if (img != null) {
+                    // Есть прикреплённая картинка -> отправляем и текст, и картинку
+                    viewModel.sendImageMessage(
+                        base64Image = img,
+                        prompt = text.ifBlank { null }  // текст-вопрос к картинке
+                    )
+                    pendingImageBase64 = null
+                } else {
+                    // Картинки нет -> обычное текстовое сообщение
+                    viewModel.sendMessage(text)
+                }
+            },
             onPickImage = { imagePickerLauncher.launch("image/*") },
             onCaptureImage = {
                 val hasPermission = ContextCompat.checkSelfPermission(
@@ -124,7 +139,8 @@ fun ChatPage(
                 } else {
                     permissionLauncher.launch(Manifest.permission.CAMERA)
                 }
-            }
+            },
+            onClearAttachment = { pendingImageBase64 = null }
         )
     }
 }
@@ -177,47 +193,60 @@ fun MessageBubble(message: MessageModel) {
                 .background(if (isUserMessage) UserMessageBlue else ModelMessageGrey)
                 .padding(16.dp)
         ) {
-            // ----- КАРТИНКА -----
             if (message.type == "image" && !message.imageBase64.isNullOrEmpty()) {
-
-                val bytes = remember(message.imageBase64) {
-                    try {
-                        Base64.decode(message.imageBase64, Base64.DEFAULT)
-                    } catch (e: IllegalArgumentException) {
-                        null
-                    }
-                }
-
-                if (bytes != null) {
-                    val bitmap = remember(bytes) {
-                        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                // ===== КАРТИНКА + ТЕКСТ ПОД НЕЙ =====
+                Column {
+                    // --- картинка ---
+                    val bytes = remember(message.imageBase64) {
+                        try {
+                            Base64.decode(message.imageBase64, Base64.DEFAULT)
+                        } catch (e: IllegalArgumentException) {
+                            null
+                        }
                     }
 
-                    if (bitmap != null) {
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = message.text ?: "image message",
-                            modifier = Modifier
-                                .widthIn(max = 260.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                        )
+                    if (bytes != null) {
+                        val bitmap = remember(bytes) {
+                            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        }
+
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = message.text ?: "image message",
+                                modifier = Modifier
+                                    .widthIn(max = 260.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                            )
+                        } else {
+                            Text(
+                                text = "Не удалось отрисовать картинку",
+                                color = Color.Red,
+                                fontSize = 12.sp
+                            )
+                        }
                     } else {
                         Text(
-                            text = "Не удалось отрисовать картинку",
+                            text = "Некорректные данные изображения",
                             color = Color.Red,
                             fontSize = 12.sp
                         )
                     }
-                } else {
-                    Text(
-                        text = "Некорректные данные изображения",
-                        color = Color.Red,
-                        fontSize = 12.sp
-                    )
-                }
 
+                    // --- подпись под картинкой, если текст не пустой ---
+                    if (!message.text.isNullOrBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        SelectionContainer {
+                            Text(
+                                text = message.text,
+                                fontWeight = FontWeight.W500,
+                                color = Color.Black
+                            )
+                        }
+                    }
+                }
             } else {
-                // ----- ТЕКСТ -----
+                // ===== ТОЛЬКО ТЕКСТ =====
                 SelectionContainer {
                     Text(
                         text = message.text ?: "",
@@ -232,112 +261,128 @@ fun MessageBubble(message: MessageModel) {
 
 @Composable
 fun MessageInput(
+    hasAttachment: Boolean,
     onMessageSend: (String) -> Unit,
     onPickImage: () -> Unit,
-    onCaptureImage: () -> Unit
+    onCaptureImage: () -> Unit,
+    onClearAttachment: () -> Unit
 ) {
     var message by remember { mutableStateOf("") }
     var showAttachments by remember { mutableStateOf(false) }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, bottom = 40.dp, top = 8.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // ОДНА КНОПКА-СКРЕПКА
-            IconButton(onClick = { showAttachments = true }) {
-                Icon(
-                    imageVector = Icons.Filled.AttachFile,
-                    contentDescription = "Вложения",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            // ПОЛЕ ВВОДА
-            OutlinedTextField(
-                modifier = Modifier.weight(1f),
-                value = message,
-                onValueChange = { message = it },
-                shape = RoundedCornerShape(24.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color(0xFFE8F5FE),
-                    unfocusedContainerColor = Color(0xFFE8F5FE),
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent
-                )
-            )
-
-            // ОТПРАВКА ТЕКСТА
-            IconButton(
-                onClick = {
-                    if (message.isNotEmpty()) {
-                        onMessageSend(message)
-                        message = ""
-                    }
-                }
+        // Индикатор, что есть прикреплённая картинка
+        if (hasAttachment) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(bottom = 4.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFE8F5FE))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Send,
-                    contentDescription = "Send",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                Text("Вложено изображение", color = Color(0xFF0D47A1), fontSize = 12.sp)
+                Spacer(Modifier.width(8.dp))
+                TextButton(onClick = onClearAttachment) {
+                    Text("Убрать", fontSize = 12.sp)
+                }
             }
         }
 
-        // ВЫПАДАЮЩЕЕ МЕНЮ ВЛОЖЕНИЙ
-        DropdownMenu(
-            expanded = showAttachments,
-            onDismissRequest = { showAttachments = false }
+        Box(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            DropdownMenuItem(
-                text = { Text("Сделать фото") },
-                leadingIcon = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // ОДНА КНОПКА-СКРЕПКА
+                IconButton(onClick = { showAttachments = true }) {
                     Icon(
-                        imageVector = Icons.Filled.CameraAlt,
-                        contentDescription = null
+                        imageVector = Icons.Filled.AttachFile,
+                        contentDescription = "Вложения",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
                     )
-                },
-                onClick = {
-                    showAttachments = false
-                    onCaptureImage()
                 }
-            )
-            DropdownMenuItem(
-                text = { Text("Выбрать из галереи") },
-                leadingIcon = {
+
+                // ПОЛЕ ВВОДА
+                OutlinedTextField(
+                    modifier = Modifier.weight(1f),
+                    value = message,
+                    onValueChange = { message = it },
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFE8F5FE),
+                        unfocusedContainerColor = Color(0xFFE8F5FE),
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent
+                    )
+                )
+
+                // ОТПРАВКА ТЕКСТА (+ прицепленная картинка, если есть)
+                IconButton(
+                    onClick = {
+                        if (message.isNotEmpty() || hasAttachment) {
+                            onMessageSend(message)
+                            message = ""
+                        }
+                    }
+                ) {
                     Icon(
-                        imageVector = Icons.Filled.Image,
-                        contentDescription = null
+                        imageVector = Icons.Filled.Send,
+                        contentDescription = "Send",
+                        tint = MaterialTheme.colorScheme.primary
                     )
-                },
-                onClick = {
-                    showAttachments = false
-                    onPickImage()
                 }
-            )
+            }
+
+            // ВЫПАДАЮЩЕЕ МЕНЮ ВЛОЖЕНИЙ
+            DropdownMenu(
+                expanded = showAttachments,
+                onDismissRequest = { showAttachments = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Сделать фото") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.CameraAlt,
+                            contentDescription = null
+                        )
+                    },
+                    onClick = {
+                        showAttachments = false
+                        onCaptureImage()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Выбрать из галереи") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Image,
+                            contentDescription = null
+                        )
+                    },
+                    onClick = {
+                        showAttachments = false
+                        onPickImage()
+                    }
+                )
+            }
         }
     }
 }
 
-/**
- * Вспомогательная функция:
- * Bitmap -> JPEG -> byte[] -> base64 -> отправка во ViewModel
- */
-private fun sendBitmapToViewModel(bitmap: Bitmap, viewModel: ChatViewModel) {
-    try {
-        val stream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
-        val bytes = stream.toByteArray()
-        val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-        viewModel.sendImageMessage(base64Image = base64, prompt = null)
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
+/** Bitmap -> base64 */
+private fun bitmapToBase64(bitmap: Bitmap): String {
+    val stream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
+    val bytes = stream.toByteArray()
+    return Base64.encodeToString(bytes, Base64.NO_WRAP)
 }
 
 @Composable
