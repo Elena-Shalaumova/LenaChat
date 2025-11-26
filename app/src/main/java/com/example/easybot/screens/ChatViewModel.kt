@@ -144,4 +144,33 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+//    fun sendImageFromCamera(base64Image: String) {
+//        viewModelScope.launch {
+//            try {
+//                val userId = UserSession.userId ?: return@launch
+//                val chatId = currentChatId ?: return@launch
+//
+//                val request = SendMessageRequest(
+//                    chatId = chatId,
+//                    userId = userId,
+//                    text = null,              // текста нет
+//                    base64Image = base64Image // только картинка
+//                )
+//
+//                val response = api.sendMessage(request)
+//
+//                // обновляем локальный список сообщений (как у тебя уже делается для обычного sendMessage)
+//                // например:
+//                // _messages.add(response.userMessage)
+//                // _messages.add(response.aiMessage)
+//
+//            } catch (e: Exception) {
+//                // обработка ошибки
+//                e.printStackTrace()
+//            }
+//        }
+//    }
+
+
 }

@@ -1,5 +1,8 @@
 package com.example.easybot.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -12,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
@@ -26,11 +30,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.easybot.R
+import com.example.easybot.screens.theme.MessageModel    // UI-модель сообщения
 import com.example.easybot.screens.theme.ModelMessageGrey
 import com.example.easybot.screens.theme.UserMessageBlue
-import com.example.easybot.screens.theme.MessageModel   // UI-модель сообщения
+import java.io.ByteArrayOutputStream
 
 @Composable
 fun ChatPage(
@@ -39,7 +45,7 @@ fun ChatPage(
     modifier: Modifier = Modifier,
     viewModel: ChatViewModel = viewModel()
 ) {
-    // инициализация чата
+    // при входе в экран инициализируем чат
     LaunchedEffect(chatId) {
         viewModel.init(chatId)
     }
@@ -47,7 +53,7 @@ fun ChatPage(
     val messages by viewModel.messages.collectAsState()
     val context = LocalContext.current
 
-    // лаунчер выбора картинки из галереи
+    // ---------- ЛАУНЧЕР ГАЛЕРЕИ ----------
     val imagePickerLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let { pickedUri ->
@@ -62,7 +68,7 @@ fun ChatPage(
                     // отправляем картинку во ViewModel
                     viewModel.sendImageMessage(
                         base64Image = base64,
-                        prompt = null // позже можно сделать отдельное поле "подпись к картинке"
+                        prompt = null          // при желании можно добавить подпись к картинке
                     )
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -70,7 +76,25 @@ fun ChatPage(
             }
         }
 
+    // ---------- ЛАУНЧЕР КАМЕРЫ ----------
+    val cameraLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+            bitmap?.let { captured ->
+                // Bitmap → base64 → отправка
+                sendBitmapToViewModel(captured, viewModel)
+            }
+        }
+
+    // ---------- ЛАУНЧЕР ЗАПРОСА РАЗРЕШЕНИЯ НА КАМЕРУ ----------
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                cameraLauncher.launch(null)
+            }
+        }
+
     Column(modifier = modifier.fillMaxSize()) {
+
         AppHeader(title = chatTitle, onClear = { viewModel.clearCurrentChat() })
 
         Box(modifier = Modifier.weight(1f)) {
@@ -84,9 +108,22 @@ fun ChatPage(
             }
         }
 
+        // ---------- НИЖНЯЯ ПАНЕЛЬ ВВОДА ----------
         MessageInput(
             onMessageSend = { text -> viewModel.sendMessage(text) },
-            onPickImage = { imagePickerLauncher.launch("image/*") }
+            onPickImage = { imagePickerLauncher.launch("image/*") },
+            onCaptureImage = {
+                val hasPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.CAMERA
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (hasPermission) {
+                    cameraLauncher.launch(null)
+                } else {
+                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                }
+            }
         )
     }
 }
@@ -117,7 +154,6 @@ fun MessageList(
         modifier = modifier.padding(horizontal = 8.dp),
         reverseLayout = true
     ) {
-        // отрисовка сообщений (текст + картинки)
         items(messageList.reversed(), key = { it.id }) { msg ->
             MessageBubble(message = msg)
         }
@@ -126,8 +162,7 @@ fun MessageList(
 
 @Composable
 fun MessageBubble(message: MessageModel) {
-    // 1 – пользователь, 0 – модель
-    val isUserMessage = message.role == 1
+    val isUserMessage = message.role == 1   // 1 – пользователь, 0 – модель
 
     Column(
         modifier = Modifier
@@ -141,7 +176,7 @@ fun MessageBubble(message: MessageModel) {
                 .background(if (isUserMessage) UserMessageBlue else ModelMessageGrey)
                 .padding(16.dp)
         ) {
-            // ==== КАРТИНКА ====
+            // ----- КАРТИНКА -----
             if (message.type == "image" && !message.imageBase64.isNullOrEmpty()) {
 
                 val bytes = remember(message.imageBase64) {
@@ -181,7 +216,7 @@ fun MessageBubble(message: MessageModel) {
                 }
 
             } else {
-                // ==== ТЕКСТ ====
+                // ----- ТЕКСТ -----
                 SelectionContainer {
                     Text(
                         text = message.text ?: "",
@@ -197,16 +232,28 @@ fun MessageBubble(message: MessageModel) {
 @Composable
 fun MessageInput(
     onMessageSend: (String) -> Unit,
-    onPickImage: () -> Unit
+    onPickImage: () -> Unit,
+    onCaptureImage: () -> Unit
 ) {
     var message by remember { mutableStateOf("") }
 
     Row(
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 40.dp, top = 8.dp),
+        modifier = Modifier
+            .padding(start = 16.dp, end = 16.dp, bottom = 40.dp, top = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // --- КНОПКА КАРТИНКИ ---
-        IconButton(onClick = { onPickImage() }) {
+        // КАМЕРА
+        IconButton(onClick = onCaptureImage) {
+            Icon(
+                imageVector = Icons.Filled.CameraAlt,
+                contentDescription = "Capture Image",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+
+        // ГАЛЕРЕЯ
+        IconButton(onClick = onPickImage) {
             Icon(
                 imageVector = Icons.Filled.Image,
                 contentDescription = "Pick Image",
@@ -215,7 +262,7 @@ fun MessageInput(
             )
         }
 
-        // --- ТЕКСТОВОЕ ПОЛЕ ---
+        // ПОЛЕ ВВОДА
         OutlinedTextField(
             modifier = Modifier.weight(1f),
             value = message,
@@ -229,7 +276,7 @@ fun MessageInput(
             )
         )
 
-        // --- ОТПРАВКА ТЕКСТА ---
+        // ОТПРАВКА ТЕКСТА
         IconButton(
             onClick = {
                 if (message.isNotEmpty()) {
@@ -244,6 +291,22 @@ fun MessageInput(
                 tint = MaterialTheme.colorScheme.primary
             )
         }
+    }
+}
+
+/**
+ * Вспомогательная функция:
+ * Bitmap -> JPEG -> byte[] -> base64 -> отправка во ViewModel
+ */
+private fun sendBitmapToViewModel(bitmap: Bitmap, viewModel: ChatViewModel) {
+    try {
+        val stream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
+        val bytes = stream.toByteArray()
+        val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+        viewModel.sendImageMessage(base64Image = base64, prompt = null)
+    } catch (e: Exception) {
+        e.printStackTrace()
     }
 }
 
