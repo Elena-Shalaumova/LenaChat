@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Send
@@ -236,59 +237,88 @@ fun MessageInput(
     onCaptureImage: () -> Unit
 ) {
     var message by remember { mutableStateOf("") }
+    var showAttachments by remember { mutableStateOf(false) }
 
-    Row(
+    Box(
         modifier = Modifier
-            .padding(start = 16.dp, end = 16.dp, bottom = 40.dp, top = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 40.dp, top = 8.dp)
     ) {
-        // КАМЕРА
-        IconButton(onClick = onCaptureImage) {
-            Icon(
-                imageVector = Icons.Filled.CameraAlt,
-                contentDescription = "Capture Image",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
-            )
-        }
-
-        // ГАЛЕРЕЯ
-        IconButton(onClick = onPickImage) {
-            Icon(
-                imageVector = Icons.Filled.Image,
-                contentDescription = "Pick Image",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
-            )
-        }
-
-        // ПОЛЕ ВВОДА
-        OutlinedTextField(
-            modifier = Modifier.weight(1f),
-            value = message,
-            onValueChange = { message = it },
-            shape = RoundedCornerShape(24.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFFE8F5FE),
-                unfocusedContainerColor = Color(0xFFE8F5FE),
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent
-            )
-        )
-
-        // ОТПРАВКА ТЕКСТА
-        IconButton(
-            onClick = {
-                if (message.isNotEmpty()) {
-                    onMessageSend(message)
-                    message = ""
-                }
-            }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Filled.Send,
-                contentDescription = "Send",
-                tint = MaterialTheme.colorScheme.primary
+            // ОДНА КНОПКА-СКРЕПКА
+            IconButton(onClick = { showAttachments = true }) {
+                Icon(
+                    imageVector = Icons.Filled.AttachFile,
+                    contentDescription = "Вложения",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // ПОЛЕ ВВОДА
+            OutlinedTextField(
+                modifier = Modifier.weight(1f),
+                value = message,
+                onValueChange = { message = it },
+                shape = RoundedCornerShape(24.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color(0xFFE8F5FE),
+                    unfocusedContainerColor = Color(0xFFE8F5FE),
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent
+                )
+            )
+
+            // ОТПРАВКА ТЕКСТА
+            IconButton(
+                onClick = {
+                    if (message.isNotEmpty()) {
+                        onMessageSend(message)
+                        message = ""
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Send,
+                    contentDescription = "Send",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        // ВЫПАДАЮЩЕЕ МЕНЮ ВЛОЖЕНИЙ
+        DropdownMenu(
+            expanded = showAttachments,
+            onDismissRequest = { showAttachments = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Сделать фото") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.CameraAlt,
+                        contentDescription = null
+                    )
+                },
+                onClick = {
+                    showAttachments = false
+                    onCaptureImage()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Выбрать из галереи") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Image,
+                        contentDescription = null
+                    )
+                },
+                onClick = {
+                    showAttachments = false
+                    onPickImage()
+                }
             )
         }
     }
