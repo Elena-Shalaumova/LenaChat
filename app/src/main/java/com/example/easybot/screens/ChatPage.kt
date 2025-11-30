@@ -38,6 +38,31 @@ import com.example.easybot.screens.theme.MessageModel
 import com.example.easybot.screens.theme.ModelMessageGrey
 import com.example.easybot.screens.theme.UserMessageBlue
 import java.io.ByteArrayOutputStream
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.rememberAsyncImagePainter
+import coil.compose.AsyncImage
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.material.icons.filled.Collections
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.ui.platform.LocalContext
+
+private fun uriToBase64(context: Context, uri: Uri): String? {
+    return try {
+        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        if (bytes != null) {
+            Base64.encodeToString(bytes, Base64.NO_WRAP)
+        } else null
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
 
 @Composable
 fun ChatPage(
@@ -54,10 +79,33 @@ fun ChatPage(
     val messages by viewModel.messages.collectAsState()
     val context = LocalContext.current
 
-    // ---- тут храним "прикреплённую" картинку для следующего сообщения ----
-    var pendingImageBase64 by remember { mutableStateOf<String?>(null) }
+    // ---- прикрепленные картинки ----
+    var pendingImagesBase64 by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    // ---------- ЛАУНЧЕР ГАЛЕРЕИ ----------
+//    // ---------- 🔥 ЛАУНЧЕР МУЛЬТИ-ГАЛЕРЕИ ----------
+//    val multiplePhotoPickerLauncher =
+//        rememberLauncherForActivityResult(
+//            ActivityResultContracts.PickMultipleVisualMedia()
+//        ) { uris ->
+//            if (uris.isNullOrEmpty()) return@rememberLauncherForActivityResult
+//
+//            val imagesBase64 = uris.mapNotNull { uri ->
+//                try {
+//                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+//                        ?: return@mapNotNull null
+//                    Base64.encodeToString(bytes, Base64.NO_WRAP)
+//                } catch (e: Exception) {
+//                    e.printStackTrace()
+//                    null
+//                }
+//            }
+//
+//            if (imagesBase64.isNotEmpty()) {
+//                pendingImagesBase64 = imagesBase64
+//            }
+//        }
+
+    // ---------- ЛАУНЧЕР ОДНОЙ КАРТИНКИ ----------
     val imagePickerLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let { pickedUri ->
@@ -69,8 +117,8 @@ fun ChatPage(
 
                     val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
 
-                    // НЕ отправляем сразу, а прикрепляем к следующему сообщению
-                    pendingImageBase64 = base64
+                    pendingImagesBase64 = listOf(base64)
+
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -80,13 +128,28 @@ fun ChatPage(
     // ---------- ЛАУНЧЕР КАМЕРЫ ----------
     val cameraLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-            bitmap?.let { captured ->
-                // Bitmap → base64 → тоже просто прикрепляем
-                pendingImageBase64 = bitmapToBase64(captured)
+            if (bitmap != null) {
+                val base64 = bitmapToBase64(bitmap)
+                pendingImagesBase64 = pendingImagesBase64 + base64
             }
         }
 
-    // ---------- ЛАУНЧЕР ЗАПРОСА РАЗРЕШЕНИЯ НА КАМЕРУ ----------
+    // ---------- ЛАУНЧЕР МУЛЬТИ-ГАЛЕРЕИ ----------
+    val multiplePhotoPickerLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.PickMultipleVisualMedia()
+        ) { uris ->
+            if (uris.isNullOrEmpty()) return@rememberLauncherForActivityResult
+
+            val imagesBase64 = uris.mapNotNull { uri ->
+                uriToBase64(context, uri)   // helper — см. ниже
+            }
+
+            // ДОБАВЛЯЕМ к уже прикреплённым
+            pendingImagesBase64 = pendingImagesBase64 + imagesBase64
+        }
+
+    // ---------- ЛАУНЧЕР РАЗРЕШЕНИЯ НА КАМЕРУ ----------
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
@@ -109,38 +172,58 @@ fun ChatPage(
             }
         }
 
-        // ---------- НИЖНЯЯ ПАНЕЛЬ ВВОДА ----------
+        // ---------- 🔥 НИЖНЯЯ ПАНЕЛЬ ВВОДА ----------
         MessageInput(
-            hasAttachment = pendingImageBase64 != null,
+            hasAttachment = pendingImagesBase64.isNotEmpty(),
             onMessageSend = { text ->
-                val img = pendingImageBase64
+                val imgs = pendingImagesBase64
 
-                if (img != null) {
-                    // Есть прикреплённая картинка -> отправляем и текст, и картинку
-                    viewModel.sendImageMessage(
-                        base64Image = img,
-                        prompt = text.ifBlank { null }  // текст-вопрос к картинке
-                    )
-                    pendingImageBase64 = null
-                } else {
-                    // Картинки нет -> обычное текстовое сообщение
-                    viewModel.sendMessage(text)
+                when {
+                    imgs.size > 1 -> {
+                        viewModel.sendImagesMessage(
+                            images = imgs,
+                            prompt = text.ifBlank { null }
+                        )
+                    }
+                    imgs.size == 1 -> {
+                        viewModel.sendImageMessage(
+                            base64Image = imgs.first(),
+                            prompt = text.ifBlank { null }
+                        )
+                    }
+                    else -> {
+                        viewModel.sendMessage(text)
+                    }
                 }
+
+                pendingImagesBase64 = emptyList()
             },
-            onPickImage = { imagePickerLauncher.launch("image/*") },
+
+            // выбрать одно изображение
+            onPickImage = {
+                imagePickerLauncher.launch("image/*")
+            },
+
+            // выбрать несколько изображений
+            onPickMultipleImages = {
+                multiplePhotoPickerLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            },
+
+            // камера
             onCaptureImage = {
                 val hasPermission = ContextCompat.checkSelfPermission(
                     context,
                     Manifest.permission.CAMERA
                 ) == PackageManager.PERMISSION_GRANTED
 
-                if (hasPermission) {
-                    cameraLauncher.launch(null)
-                } else {
-                    permissionLauncher.launch(Manifest.permission.CAMERA)
-                }
+                if (hasPermission) cameraLauncher.launch(null)
+                else permissionLauncher.launch(Manifest.permission.CAMERA)
             },
-            onClearAttachment = { pendingImageBase64 = null }
+
+            // удалить прикрепленные
+            onClearAttachment = { pendingImagesBase64 = emptyList() }
         )
     }
 }
@@ -158,7 +241,10 @@ fun EmptyChatScreen(modifier: Modifier = Modifier) {
             contentDescription = "Icon",
             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
         )
-        Text(text = "Ask me anything", fontSize = 22.sp, color = Color.Gray)
+        Text(
+            text = "Ask me anything",
+            fontSize = 22.sp,
+            color = Color.Gray)
     }
 }
 
@@ -191,79 +277,70 @@ fun MessageBubble(message: MessageModel) {
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
                 .background(if (isUserMessage) UserMessageBlue else ModelMessageGrey)
-                .padding(16.dp)
+                .padding(12.dp)
         ) {
-            if (message.type == "image" && !message.imageBase64.isNullOrEmpty()) {
-                // ===== КАРТИНКА + ТЕКСТ ПОД НЕЙ =====
-                Column {
-                    // --- картинка ---
-                    val bytes = remember(message.imageBase64) {
-                        try {
-                            Base64.decode(message.imageBase64, Base64.DEFAULT)
-                        } catch (e: IllegalArgumentException) {
-                            null
-                        }
-                    }
 
-                    if (bytes != null) {
-                        val bitmap = remember(bytes) {
-                            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                        }
-
-                        if (bitmap != null) {
-                            Image(
-                                bitmap = bitmap.asImageBitmap(),
-                                contentDescription = message.text ?: "image message",
-                                modifier = Modifier
-                                    .widthIn(max = 260.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                            )
-                        } else {
-                            Text(
-                                text = "Не удалось отрисовать картинку",
-                                color = Color.Red,
-                                fontSize = 12.sp
-                            )
-                        }
-                    } else {
+            Column {
+                // ----- ТЕКСТ -----
+                if (!message.text.isNullOrBlank()) {
+                    SelectionContainer {
                         Text(
-                            text = "Некорректные данные изображения",
-                            color = Color.Red,
-                            fontSize = 12.sp
+                            text = message.text,
+                            fontWeight = FontWeight.W500,
+                            color = Color.Black
                         )
                     }
+                }
 
-                    // --- подпись под картинкой, если текст не пустой ---
-                    if (!message.text.isNullOrBlank()) {
-                        Spacer(Modifier.height(8.dp))
-                        SelectionContainer {
-                            Text(
-                                text = message.text,
-                                fontWeight = FontWeight.W500,
-                                color = Color.Black
-                            )
+                // ---------- СПИСОК КАРТИНОК ----------
+                if (message.images.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(message.images) { base64 ->
+                            // декодируем base64 -> Bitmap
+                            val bitmap = remember(base64) {
+                                try {
+                                    // если вдруг приходит с заголовком
+                                    val clean = base64.substringAfter("base64,", base64)
+                                    val bytes = Base64.decode(clean, Base64.DEFAULT)
+                                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                } catch (e: IllegalArgumentException) {
+                                    null
+                                }
+                            }
+
+                            if (bitmap != null) {
+                                Image(
+                                    bitmap = bitmap.asImageBitmap(),
+                                    contentDescription = message.text ?: "image",
+                                    modifier = Modifier
+                                        .size(140.dp) // можно поменять размер
+                                        .clip(RoundedCornerShape(12.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Text(
+                                    text = "❌ не удалось загрузить картинку",
+                                    color = Color.Red,
+                                    fontSize = 10.sp
+                                )
+                            }
                         }
                     }
-                }
-            } else {
-                // ===== ТОЛЬКО ТЕКСТ =====
-                SelectionContainer {
-                    Text(
-                        text = message.text ?: "",
-                        fontWeight = FontWeight.W500,
-                        color = Color.Black
-                    )
                 }
             }
         }
     }
 }
-
 @Composable
 fun MessageInput(
     hasAttachment: Boolean,
     onMessageSend: (String) -> Unit,
     onPickImage: () -> Unit,
+    onPickMultipleImages: () -> Unit,
     onCaptureImage: () -> Unit,
     onClearAttachment: () -> Unit
 ) {
@@ -275,20 +352,25 @@ fun MessageInput(
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, bottom = 40.dp, top = 8.dp)
     ) {
-        // Индикатор, что есть прикреплённая картинка
+
+        // --- Индикатор, что есть прикреплённые картинки ---
         if (hasAttachment) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .padding(bottom = 4.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFE8F5FE))
+                    .background(Color(0xFFE8F8FE))
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
-                Text("Вложено изображение", color = Color(0xFF0D47A1), fontSize = 12.sp)
+                Text(
+                    text = "Вложено изображение",
+                    color = Color(0xFF0D47A1),
+                    fontSize = 12.sp
+                )
                 Spacer(Modifier.width(8.dp))
                 TextButton(onClick = onClearAttachment) {
-                    Text("Убрать", fontSize = 12.sp)
+                    Text(text = "Убрать", fontSize = 12.sp)
                 }
             }
         }
@@ -300,7 +382,7 @@ fun MessageInput(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // ОДНА КНОПКА-СКРЕПКА
+                // КНОПКА-СКРЕПКА (открывает меню вложений)
                 IconButton(onClick = { showAttachments = true }) {
                     Icon(
                         imageVector = Icons.Filled.AttachFile,
@@ -317,14 +399,14 @@ fun MessageInput(
                     onValueChange = { message = it },
                     shape = RoundedCornerShape(24.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFFE8F5FE),
-                        unfocusedContainerColor = Color(0xFFE8F5FE),
+                        focusedContainerColor = Color(0xFFE8F8FE),
+                        unfocusedContainerColor = Color(0xFFE8F8FE),
                         focusedBorderColor = Color.Transparent,
                         unfocusedBorderColor = Color.Transparent
                     )
                 )
 
-                // ОТПРАВКА ТЕКСТА (+ прицепленная картинка, если есть)
+                // КНОПКА ОТПРАВКИ
                 IconButton(
                     onClick = {
                         if (message.isNotEmpty() || hasAttachment) {
@@ -359,17 +441,32 @@ fun MessageInput(
                         onCaptureImage()
                     }
                 )
+
                 DropdownMenuItem(
-                    text = { Text("Выбрать из галереи") },
+                    text = { Text("Выбрать одно фото") },
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Filled.Image,
-                            contentDescription = null
+                            imageVector = Icons.Default.Collections,
+                            contentDescription = "Выбрать одно фото"
                         )
                     },
                     onClick = {
                         showAttachments = false
                         onPickImage()
+                    }
+                )
+
+                DropdownMenuItem(
+                    text = { Text("Выбрать несколько фото") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Collections,
+                            contentDescription = "Выбрать несколько фото"
+                        )
+                    },
+                    onClick = {
+                        showAttachments = false
+                        onPickMultipleImages()
                     }
                 )
             }

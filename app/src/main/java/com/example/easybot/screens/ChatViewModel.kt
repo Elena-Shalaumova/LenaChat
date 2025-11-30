@@ -37,68 +37,139 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ========== ТЕКСТОВОЕ СООБЩЕНИЕ ==========
+//    // ========== ТЕКСТОВОЕ СООБЩЕНИЕ ==========
+//    fun sendMessage(question: String) {
+//        if (chatId == -1L || question.isBlank()) return
+//
+//        viewModelScope.launch {
+//
+//            // 1. Добавляем временное сообщение
+//            val tmp = MessageModel(
+//                id = -1L,
+//                chatId = chatId,
+//                role = 1,
+//                type = "text",
+//                text = question,
+//                images = emptyList(),                // 👈 вместо imageBase64
+//                createdAt = System.currentTimeMillis()
+//            )
+//            _messages.value = _messages.value + tmp
+//
+//            try {
+//                // 2. Отправляем на сервер
+//                repository.sendTextMessage(
+//                    chatId = chatId.toInt(),
+//                    text = question
+//                )
+//
+//                // 3. Перезагружаем историю
+//                loadMessages()
+//
+//            } catch (e: Exception) {
+//                e.printStackTrace()
+//
+//                // Удаляем временное сообщение
+//                _messages.value = _messages.value.filter { it.id != -1L }
+//
+//                val errorMsg = MessageModel(
+//                    id = -2L,
+//                    chatId = chatId,
+//                    role = 0,
+//                    type = "text",
+//                    text = "Ошибка отправки сообщения: ${e.message}",
+//                    images = emptyList(),            // 👈
+//                    createdAt = System.currentTimeMillis()
+//                )
+//                _messages.value = _messages.value + errorMsg
+//            }
+//        }
+//    }
+//
+//    // ========== СООБЩЕНИЕ С КАРТИНКОЙ ==========
+//    fun sendImageMessage(base64Image: String, prompt: String?) {
+//        if (chatId == -1L) return
+//
+//        viewModelScope.launch {
+//
+//            // 1. Временное сообщение (одна картинка)
+//            val tmp = MessageModel(
+//                id = -1L,
+//                chatId = chatId,
+//                role = 1,
+//                type = "image",
+//                text = prompt,
+//                images = listOf(base64Image),       // 👈 список из одного base64
+//                createdAt = System.currentTimeMillis()
+//            )
+//            _messages.value = _messages.value + tmp
+//
+//            try {
+//                // тут вызываем обёртку, которая внутри сама завернёт в список
+//                repository.sendImageMessage(
+//                    chatId = chatId.toInt(),
+//                    base64Image = base64Image,
+//                    prompt = prompt
+//                )
+//
+//                loadMessages()
+//
+//            } catch (e: Exception) {
+//                e.printStackTrace()
+//
+//                _messages.value = _messages.value.filter { it.id != -1L }
+//
+//                val err = MessageModel(
+//                    id = -2L,
+//                    chatId = chatId,
+//                    role = 0,
+//                    type = "text",
+//                    text = "Ошибка отправки изображения: ${e.message}",
+//                    images = emptyList(),            // 👈
+//                    createdAt = System.currentTimeMillis()
+//                )
+//
+//                _messages.value = _messages.value + err
+//            }
+//        }
+//    }
+
+    // текстовое сообщение
     fun sendMessage(question: String) {
         if (chatId == -1L || question.isBlank()) return
 
         viewModelScope.launch {
-
-            // 1. Добавляем временное сообщение
             val tmp = MessageModel(
                 id = -1L,
                 chatId = chatId,
                 role = 1,
                 type = "text",
                 text = question,
-                imageBase64 = null,
+                images = emptyList(),
                 createdAt = System.currentTimeMillis()
             )
             _messages.value = _messages.value + tmp
 
             try {
-                // 2. Отправляем на сервер
-                repository.sendTextMessage(
-                    chatId = chatId.toInt(),
-                    text = question
-                )
-
-                // 3. Перезагружаем историю
+                repository.sendTextMessage(chatId.toInt(), question)
                 loadMessages()
-
             } catch (e: Exception) {
-                e.printStackTrace()
-
-                // Удаляем временное сообщение
-                _messages.value = _messages.value.filter { it.id != -1L }
-
-                val errorMsg = MessageModel(
-                    id = -2L,
-                    chatId = chatId,
-                    role = 0,
-                    type = "text",
-                    text = "Ошибка отправки сообщения: ${e.message}",
-                    imageBase64 = null,
-                    createdAt = System.currentTimeMillis()
-                )
-                _messages.value = _messages.value + errorMsg
+                // ошибка — у тебя уже реализована
             }
         }
     }
 
-    // ========== СООБЩЕНИЕ С КАРТИНКОЙ ==========
+    // одна картинка
     fun sendImageMessage(base64Image: String, prompt: String?) {
         if (chatId == -1L) return
 
         viewModelScope.launch {
-
-            // 1. Временное сообщение
             val tmp = MessageModel(
                 id = -1L,
                 chatId = chatId,
                 role = 1,
                 type = "image",
                 text = prompt,
-                imageBase64 = base64Image,
+                images = listOf(base64Image),
                 createdAt = System.currentTimeMillis()
             )
             _messages.value = _messages.value + tmp
@@ -109,25 +180,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     base64Image = base64Image,
                     prompt = prompt
                 )
-
                 loadMessages()
-
             } catch (e: Exception) {
-                e.printStackTrace()
-
-                _messages.value = _messages.value.filter { it.id != -1L }
-
-                val err = MessageModel(
-                    id = -2L,
-                    chatId = chatId,
-                    role = 0,
-                    type = "text",
-                    text = "Ошибка отправки изображения: ${e.message}",
-                    imageBase64 = null,
-                    createdAt = System.currentTimeMillis()
-                )
-
-                _messages.value = _messages.value + err
+                // обработка ошибки уже есть
             }
         }
     }
@@ -145,32 +200,38 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-//    fun sendImageFromCamera(base64Image: String) {
-//        viewModelScope.launch {
-//            try {
-//                val userId = UserSession.userId ?: return@launch
-//                val chatId = currentChatId ?: return@launch
-//
-//                val request = SendMessageRequest(
-//                    chatId = chatId,
-//                    userId = userId,
-//                    text = null,              // текста нет
-//                    base64Image = base64Image // только картинка
-//                )
-//
-//                val response = api.sendMessage(request)
-//
-//                // обновляем локальный список сообщений (как у тебя уже делается для обычного sendMessage)
-//                // например:
-//                // _messages.add(response.userMessage)
-//                // _messages.add(response.aiMessage)
-//
-//            } catch (e: Exception) {
-//                // обработка ошибки
-//                e.printStackTrace()
-//            }
-//        }
-//    }
+    // ========== СООБЩЕНИЕ С НЕСКОЛЬКИМИ КАРТИНКАМИ ==========
+    fun sendImagesMessage(images: List<String>, prompt: String?) {
+        if (chatId == -1L || images.isEmpty()) return
+
+        viewModelScope.launch {
+
+            val tmp = MessageModel(
+                id = -1L,
+                chatId = chatId,
+                role = 1,
+                type = "image",
+                text = prompt,
+                images = images,
+                createdAt = System.currentTimeMillis()
+            )
+            _messages.value = _messages.value + tmp
+
+            try {
+                repository.sendImagesMessage(
+                    chatId = chatId.toInt(),
+                    images = images,
+                    prompt = prompt
+                )
+
+                loadMessages()
+
+            } catch (e: Exception) {
+                // обработка ошибки уже есть
+            }
+        }
+    }
+
 
 
 }

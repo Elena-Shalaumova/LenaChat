@@ -9,6 +9,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
+import kotlin.collections.List
 
 // --- DTO для настроек ---
 data class SettingsDto(val id: Int, val userId: Int, val stream: Boolean, val model: String?)
@@ -18,8 +19,13 @@ data class OllamaModels(val models: List<String>)
 
 // --- DTO для чатов и сообщений ---
 data class ChatDto(val id: Int, val title: String)
-//data class MessageDto(val id: Int, val chatId: Int, val text: String, val role: Int)
-data class MessageDto(val id: Int, val chatId: Int, val role: Int, val type: String,val text: String?, val base64Image: String?, val createdAt: String? )
+data class MessageDto(val id: Int,
+                      val chatId: Int,
+                      val role: Int,
+                      val type: String,
+                      val text: String?,
+                      val images: List<String>,
+                      val createdAt: String? )
 
 
 // --- DTO для запросов ---
@@ -28,11 +34,13 @@ data class SendMessageRequest(
     val chatId: Int,
     val userId: Int,
     val text: String?,        // может быть null для чистой картинки
-    val base64Image: String?  // null для обычного текста
+    val base64Images: List<String>  // СПИСОК картинок в base64
+
 )
 
 // --- DTO для ответов ---
-data class SendMessageResponse(val userMessage: MessageDto, val aiMessage: MessageDto)
+data class SendMessageResponse(val userMessage: MessageDto,
+                               val aiMessage: MessageDto)
 
 // --- DTO для авторизации ---
 data class LoginReq(val login: String, val password: String)
@@ -107,6 +115,8 @@ interface WebApiChatAI {
 
 }
 
+
+//фабрика
 fun provideApi(baseUrl: String = "http://10.0.2.2:5167/"): WebApiChatAI {
     val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
 

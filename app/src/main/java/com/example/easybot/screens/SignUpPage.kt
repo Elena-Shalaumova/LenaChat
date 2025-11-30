@@ -13,6 +13,7 @@ import com.example.easybot.navigation.Routes
 
 @Composable
 fun SignUpPage(navController: NavController) {
+    //храним значение внутри компос
     var login by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }

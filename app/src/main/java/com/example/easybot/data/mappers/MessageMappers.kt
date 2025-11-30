@@ -12,10 +12,9 @@ fun MessageDto.toModel(): MessageModel =
         id = id.toLong(),
         chatId = chatId.toLong(),
         role = role,
-       // type = if (base64Image != null) "image" else "text",
         type = type,
         text = text,
-        imageBase64 = base64Image,
+        images = images,
         createdAt = createdAt?.toLongOrNull() ?: System.currentTimeMillis()
     )
 // -----------------------------
