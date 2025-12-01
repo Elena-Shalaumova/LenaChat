@@ -112,6 +112,9 @@ interface WebApiChatAI {
    // @POST("api/Chat/send-image")
    // suspend fun sendImageMessage(@Body request: SendImageMessageRequest): SendMessageResponse
 
+    @POST("api/Chat/{chatId}/clear-context")
+   suspend fun clearContext(@Path("chatId") chatId: Int): Response<Unit>
+
 
 }
 

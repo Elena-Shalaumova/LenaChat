@@ -140,7 +140,14 @@ fun ChatPage(
 
     Column(modifier = modifier.fillMaxSize()) {
 
-        AppHeader(title = chatTitle, onClear = { viewModel.clearCurrentChat() })
+        //AppHeader(title = chatTitle, onClear = { viewModel.clearCurrentChat() })
+        AppHeader(
+            title = chatTitle,
+//            onClearChat = { viewModel.clearChat(chatId) },
+//            onClearContext = { viewModel.clearContext(chatId) }
+            onClearChat = { viewModel.clearChat() },     // без chatId, он уже внутри VM
+            onClearContext = { viewModel.clearContext() }
+        )
 
         Box(modifier = Modifier.weight(1f)) {
             if (messages.isEmpty()) {
@@ -495,22 +502,63 @@ private fun bitmapToBase64(bitmap: Bitmap): String {
     return Base64.encodeToString(bytes, Base64.NO_WRAP)
 }
 
+//@Composable
+//fun AppHeader(title: String, onClear: () -> Unit = {}) {
+//    Row(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .background(MaterialTheme.colorScheme.primary)
+//            .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp),
+//        verticalAlignment = Alignment.CenterVertically
+//    ) {
+//        Text(
+//            text = title,
+//            color = Color.White,
+//            fontSize = 22.sp,
+//            modifier = Modifier.weight(1f)
+//        )
+//        TextButton(onClick = onClear) {
+//            Text(
+//                text = "Очистить",
+//                color = Color.White,
+//                fontSize = 16.sp
+//            )
+//        }
+//    }
+//}
+
 @Composable
-fun AppHeader(title: String, onClear: () -> Unit = {}) {
+fun AppHeader(
+    title: String,
+    onClearChat: () -> Unit,
+    onClearContext: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primary)
+            .background(color = MaterialTheme.colorScheme.primary)
             .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // ---- Заголовок ----
         Text(
             text = title,
             color = Color.White,
             fontSize = 22.sp,
             modifier = Modifier.weight(1f)
         )
-        TextButton(onClick = onClear) {
+
+        // ---- Новая кнопка: Сбросить контекст ----
+        TextButton(onClick = onClearContext) {
+            Text(
+                text = "Контекст",
+                color = Color.White,
+                fontSize = 16.sp
+            )
+        }
+
+        // ---- Старая кнопка: Полная очистка чата ----
+        TextButton(onClick = onClearChat) {
             Text(
                 text = "Очистить",
                 color = Color.White,
@@ -519,3 +567,4 @@ fun AppHeader(title: String, onClear: () -> Unit = {}) {
         }
     }
 }
+

@@ -190,6 +190,23 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+    fun clearChat() = clearCurrentChat()
+
+    fun clearContext() {
+        if (chatId == -1L) return
+
+        viewModelScope.launch {
+            try {
+                repository.clearContext(chatId.toInt())
+                // здесь можно повесить баннер/снэкбар: "Контекст очищен"
+            } catch (e: Exception) {
+                // лог/обработка ошибки
+            }
+        }
+    }
+
+
+
 
     //постепенно дописываем текст ответа в уже существующий плейсхолдер ассистента (по индексу).
     private suspend fun streamAiMessageInto(index: Int, full: MessageModel) {

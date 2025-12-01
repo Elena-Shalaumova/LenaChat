@@ -93,4 +93,9 @@ class ChatRepository(
         val response = api.sendMessage(request)
         return listOf(response.aiMessage).toModels().first()
     }
+
+    suspend fun clearContext(chatId: Int) {
+        api.clearContext(chatId)
+    }
+
 }
