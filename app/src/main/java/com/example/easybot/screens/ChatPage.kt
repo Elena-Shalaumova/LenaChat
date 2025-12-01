@@ -255,9 +255,15 @@ fun MessageList(
 ) {
     LazyColumn(
         modifier = modifier.padding(horizontal = 8.dp),
-        reverseLayout = true
+        //reverseLayout = true
+        reverseLayout = false  // обычный порядок, без выворотов
     ) {
-        items(messageList.reversed(), key = { it.id }) { msg ->
+        //items(messageList.reversed(), key = { it.id }) { msg ->
+            //MessageBubble(message = msg)
+        items(
+            items = messageList,
+            key = { msg -> "${msg.id}_${msg.createdAt}" }   // уникальный ключ
+        ) { msg ->
             MessageBubble(message = msg)
         }
     }

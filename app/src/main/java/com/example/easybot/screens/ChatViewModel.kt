@@ -196,8 +196,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val fullText = full.text.orEmpty()
         if (fullText.isEmpty()) return
 
-        val chunkSize = 3     // сколько символов добавляем за шаг
-        val delayMs = 20L     // пауза между шагами (мс)
+        val chunkSize = 8     // сколько символов добавляем за шаг
+        val delayMs = 35L     // пауза между шагами (мс)
 
         for (i in fullText.indices step chunkSize) {
             val end = minOf(i + chunkSize, fullText.length)
