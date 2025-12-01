@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.easybot.data.ChatRepository
 import com.example.easybot.screens.theme.MessageModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +20,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _messages = MutableStateFlow<List<MessageModel>>(emptyList())
     val messages: StateFlow<List<MessageModel>> = _messages.asStateFlow()
 
+    // инициализация при заходе в чат
     fun init(chatId: Long) {
         if (this.chatId == chatId) return
         this.chatId = chatId
@@ -37,108 +39,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-//    // ========== ТЕКСТОВОЕ СООБЩЕНИЕ ==========
-//    fun sendMessage(question: String) {
-//        if (chatId == -1L || question.isBlank()) return
-//
-//        viewModelScope.launch {
-//
-//            // 1. Добавляем временное сообщение
-//            val tmp = MessageModel(
-//                id = -1L,
-//                chatId = chatId,
-//                role = 1,
-//                type = "text",
-//                text = question,
-//                images = emptyList(),                // 👈 вместо imageBase64
-//                createdAt = System.currentTimeMillis()
-//            )
-//            _messages.value = _messages.value + tmp
-//
-//            try {
-//                // 2. Отправляем на сервер
-//                repository.sendTextMessage(
-//                    chatId = chatId.toInt(),
-//                    text = question
-//                )
-//
-//                // 3. Перезагружаем историю
-//                loadMessages()
-//
-//            } catch (e: Exception) {
-//                e.printStackTrace()
-//
-//                // Удаляем временное сообщение
-//                _messages.value = _messages.value.filter { it.id != -1L }
-//
-//                val errorMsg = MessageModel(
-//                    id = -2L,
-//                    chatId = chatId,
-//                    role = 0,
-//                    type = "text",
-//                    text = "Ошибка отправки сообщения: ${e.message}",
-//                    images = emptyList(),            // 👈
-//                    createdAt = System.currentTimeMillis()
-//                )
-//                _messages.value = _messages.value + errorMsg
-//            }
-//        }
-//    }
-//
-//    // ========== СООБЩЕНИЕ С КАРТИНКОЙ ==========
-//    fun sendImageMessage(base64Image: String, prompt: String?) {
-//        if (chatId == -1L) return
-//
-//        viewModelScope.launch {
-//
-//            // 1. Временное сообщение (одна картинка)
-//            val tmp = MessageModel(
-//                id = -1L,
-//                chatId = chatId,
-//                role = 1,
-//                type = "image",
-//                text = prompt,
-//                images = listOf(base64Image),       // 👈 список из одного base64
-//                createdAt = System.currentTimeMillis()
-//            )
-//            _messages.value = _messages.value + tmp
-//
-//            try {
-//                // тут вызываем обёртку, которая внутри сама завернёт в список
-//                repository.sendImageMessage(
-//                    chatId = chatId.toInt(),
-//                    base64Image = base64Image,
-//                    prompt = prompt
-//                )
-//
-//                loadMessages()
-//
-//            } catch (e: Exception) {
-//                e.printStackTrace()
-//
-//                _messages.value = _messages.value.filter { it.id != -1L }
-//
-//                val err = MessageModel(
-//                    id = -2L,
-//                    chatId = chatId,
-//                    role = 0,
-//                    type = "text",
-//                    text = "Ошибка отправки изображения: ${e.message}",
-//                    images = emptyList(),            // 👈
-//                    createdAt = System.currentTimeMillis()
-//                )
-//
-//                _messages.value = _messages.value + err
-//            }
-//        }
-//    }
-
-    // текстовое сообщение
+    // ========== ТЕКСТОВОЕ СООБЩЕНИЕ ==========
     fun sendMessage(question: String) {
         if (chatId == -1L || question.isBlank()) return
 
         viewModelScope.launch {
-            val tmp = MessageModel(
+
+            // 1. пузырь пользователя
+            val userMsg = MessageModel(
                 id = -1L,
                 chatId = chatId,
                 role = 1,
@@ -147,23 +55,43 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 images = emptyList(),
                 createdAt = System.currentTimeMillis()
             )
-            _messages.value = _messages.value + tmp
+            _messages.value = _messages.value + userMsg
+
+            // 2. заранее добавляем пустой пузырь ассистента ("...")
+            val placeholderIndex = _messages.value.size
+            _messages.value = _messages.value + MessageModel(
+                id = -2L,
+                chatId = chatId,
+                role = 0,
+                type = "text",
+                text = "...",
+                images = emptyList(),
+                createdAt = System.currentTimeMillis()
+            )
 
             try {
-                repository.sendTextMessage(chatId.toInt(), question)
-                loadMessages()
+                // 3. получаем полный ответ от репозитория
+                val ai = repository.sendTextMessage(chatId.toInt(), question)
+
+                // 4. “печатаем” его внутрь плейсхолдера
+                streamAiMessageInto(placeholderIndex, ai)
+
+                // при желании можно после этого дернуть loadMessages() для sync с БД
+                // loadMessages()
             } catch (e: Exception) {
-                // ошибка — у тебя уже реализована
+                e.printStackTrace()
             }
         }
     }
 
-    // одна картинка
+    // ========== ОДНА КАРТИНКА (с текстом или без) ==========
     fun sendImageMessage(base64Image: String, prompt: String?) {
         if (chatId == -1L) return
 
         viewModelScope.launch {
-            val tmp = MessageModel(
+
+            // пузырь пользователя
+            val userMsg = MessageModel(
                 id = -1L,
                 chatId = chatId,
                 role = 1,
@@ -172,21 +100,81 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 images = listOf(base64Image),
                 createdAt = System.currentTimeMillis()
             )
-            _messages.value = _messages.value + tmp
+            _messages.value = _messages.value + userMsg
+
+            // плейсхолдер ассистента
+            val placeholderIndex = _messages.value.size
+            _messages.value = _messages.value + MessageModel(
+                id = -2L,
+                chatId = chatId,
+                role = 0,
+                type = "text",
+                text = "...",
+                images = emptyList(),
+                createdAt = System.currentTimeMillis()
+            )
 
             try {
-                repository.sendImageMessage(
+                val ai = repository.sendImageMessage(
                     chatId = chatId.toInt(),
                     base64Image = base64Image,
                     prompt = prompt
                 )
-                loadMessages()
+
+                streamAiMessageInto(placeholderIndex, ai)
+
             } catch (e: Exception) {
-                // обработка ошибки уже есть
+                e.printStackTrace()
             }
         }
     }
 
+    // ========== НЕСКОЛЬКО КАРТИНОК (с текстом или без) ==========
+    fun sendImagesMessage(images: List<String>, prompt: String?) {
+        if (chatId == -1L || images.isEmpty()) return
+
+        viewModelScope.launch {
+
+            // пузырь пользователя
+            val userMsg = MessageModel(
+                id = -1L,
+                chatId = chatId,
+                role = 1,
+                type = "image",
+                text = prompt,
+                images = images,
+                createdAt = System.currentTimeMillis()
+            )
+            _messages.value = _messages.value + userMsg
+
+            // плейсхолдер ассистента
+            val placeholderIndex = _messages.value.size
+            _messages.value = _messages.value + MessageModel(
+                id = -2L,
+                chatId = chatId,
+                role = 0,
+                type = "text",
+                text = "...",
+                images = emptyList(),
+                createdAt = System.currentTimeMillis()
+            )
+
+            try {
+                val ai = repository.sendImagesMessage(
+                    chatId = chatId.toInt(),
+                    images = images,
+                    prompt = prompt
+                )
+
+                streamAiMessageInto(placeholderIndex, ai)
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // очистка чата
     fun clearCurrentChat() {
         if (chatId == -1L) return
 
@@ -200,38 +188,27 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ========== СООБЩЕНИЕ С НЕСКОЛЬКИМИ КАРТИНКАМИ ==========
-    fun sendImagesMessage(images: List<String>, prompt: String?) {
-        if (chatId == -1L || images.isEmpty()) return
+    /**
+     * Псевдо-стрим: постепенно дописываем текст ответа в уже существующий
+     * плейсхолдер ассистента (по индексу).
+     */
+    private suspend fun streamAiMessageInto(index: Int, full: MessageModel) {
+        val fullText = full.text.orEmpty()
+        if (fullText.isEmpty()) return
 
-        viewModelScope.launch {
+        val chunkSize = 3     // сколько символов добавляем за шаг
+        val delayMs = 20L     // пауза между шагами (мс)
 
-            val tmp = MessageModel(
-                id = -1L,
-                chatId = chatId,
-                role = 1,
-                type = "image",
-                text = prompt,
-                images = images,
-                createdAt = System.currentTimeMillis()
-            )
-            _messages.value = _messages.value + tmp
+        for (i in fullText.indices step chunkSize) {
+            val end = minOf(i + chunkSize, fullText.length)
+            val current = fullText.substring(0, end)
 
-            try {
-                repository.sendImagesMessage(
-                    chatId = chatId.toInt(),
-                    images = images,
-                    prompt = prompt
-                )
+            val updated = _messages.value.toMutableList()
+            val old = updated.getOrNull(index) ?: return
+            updated[index] = old.copy(text = current)
+            _messages.value = updated
 
-                loadMessages()
-
-            } catch (e: Exception) {
-                // обработка ошибки уже есть
-            }
+            delay(delayMs)
         }
     }
-
-
-
 }

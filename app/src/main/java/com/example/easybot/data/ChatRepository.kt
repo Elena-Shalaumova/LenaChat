@@ -6,7 +6,6 @@ import com.example.easybot.data.mappers.toModels
 import com.example.easybot.screens.theme.MessageModel
 
 class ChatRepository(
-    // фабрика
     private val api: WebApiChatAI = provideApi(),
 ) {
     private fun getUserId(): Int =
@@ -41,17 +40,20 @@ class ChatRepository(
     }
 
     // ---------- ТЕКСТ ----------
-    suspend fun sendTextMessage(chatId: Int, text: String) {
-        val userId = UserSession.userId?.toInt() ?: return   // или кинь ошибку, как хочешь
+    // возвращаем ответ ИИ как MessageModel
+    suspend fun sendTextMessage(chatId: Int, text: String): MessageModel {
+        val userId = getUserId()
 
         val request = SendMessageRequest(
             chatId = chatId,
             userId = userId,
-            text = text,                     // только текст
-            base64Images = emptyList()       // без картинок
+            text = text,
+            base64Images = emptyList()
         )
 
-        api.sendMessage(request)
+        val response = api.sendMessage(request)
+        // response.aiMessage: MessageDto -> конвертим через toModels()
+        return listOf(response.aiMessage).toModels().first()
     }
 
     // ---------- ОДНА КАРТИНКА (может быть + текст-подпись) ----------
@@ -59,17 +61,18 @@ class ChatRepository(
         chatId: Int,
         base64Image: String,
         prompt: String?
-    ) {
-        val userId = UserSession.userId?.toInt() ?: return   // или кинь ошибку, как хочешь
+    ): MessageModel {
+        val userId = getUserId()
 
         val request = SendMessageRequest(
             chatId = chatId,
             userId = userId,
-            text = prompt,                   // текст к картинке
+            text = prompt,
             base64Images = listOf(base64Image)
         )
 
-        api.sendMessage(request)
+        val response = api.sendMessage(request)
+        return listOf(response.aiMessage).toModels().first()
     }
 
     // ---------- НЕСКОЛЬКО КАРТИНОК (может быть + текст) ----------
@@ -77,16 +80,17 @@ class ChatRepository(
         chatId: Int,
         images: List<String>,
         prompt: String?
-    ) {
-        val userId = UserSession.userId?.toInt() ?: return   // или кинь ошибку, как хочешь
+    ): MessageModel {
+        val userId = getUserId()
 
         val request = SendMessageRequest(
             chatId = chatId,
             userId = userId,
-            text = prompt,                   // общий текст для всех картинок
-            base64Images = images            // список base64
+            text = prompt,
+            base64Images = images
         )
 
-        api.sendMessage(request)
+        val response = api.sendMessage(request)
+        return listOf(response.aiMessage).toModels().first()
     }
 }
