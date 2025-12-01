@@ -50,7 +50,11 @@ import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
     return try {
@@ -81,29 +85,6 @@ fun ChatPage(
 
     // ---- прикрепленные картинки ----
     var pendingImagesBase64 by remember { mutableStateOf<List<String>>(emptyList()) }
-
-//    // ---------- 🔥 ЛАУНЧЕР МУЛЬТИ-ГАЛЕРЕИ ----------
-//    val multiplePhotoPickerLauncher =
-//        rememberLauncherForActivityResult(
-//            ActivityResultContracts.PickMultipleVisualMedia()
-//        ) { uris ->
-//            if (uris.isNullOrEmpty()) return@rememberLauncherForActivityResult
-//
-//            val imagesBase64 = uris.mapNotNull { uri ->
-//                try {
-//                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-//                        ?: return@mapNotNull null
-//                    Base64.encodeToString(bytes, Base64.NO_WRAP)
-//                } catch (e: Exception) {
-//                    e.printStackTrace()
-//                    null
-//                }
-//            }
-//
-//            if (imagesBase64.isNotEmpty()) {
-//                pendingImagesBase64 = imagesBase64
-//            }
-//        }
 
     // ---------- ЛАУНЧЕР ОДНОЙ КАРТИНКИ ----------
     val imagePickerLauncher =
@@ -253,16 +234,32 @@ fun MessageList(
     modifier: Modifier = Modifier,
     messageList: List<MessageModel>
 ) {
+    // состояние скролла списка
+    val listState = rememberLazyListState()
+
+    // когда добавилось новое сообщение — скроллимся в самый низ
+    LaunchedEffect(messageList.size) {
+        if (messageList.isNotEmpty()) {
+            listState.animateScrollToItem(messageList.lastIndex)
+        }
+    }
+
+    // когда меняется текст последнего сообщения (стриминг) — тоже докручиваем вниз
+    val lastMessage = messageList.lastOrNull()
+    LaunchedEffect(lastMessage?.id, lastMessage?.text) {
+        if (messageList.isNotEmpty()) {
+            listState.animateScrollToItem(messageList.lastIndex)
+        }
+    }
+
     LazyColumn(
         modifier = modifier.padding(horizontal = 8.dp),
-        //reverseLayout = true
-        reverseLayout = false  // обычный порядок, без выворотов
+        reverseLayout = false,         // обычный порядок
+        state = listState
     ) {
-        //items(messageList.reversed(), key = { it.id }) { msg ->
-            //MessageBubble(message = msg)
         items(
             items = messageList,
-            key = { msg -> "${msg.id}_${msg.createdAt}" }   // уникальный ключ
+            key = { msg -> "${msg.id}_${msg.createdAt}" }
         ) { msg ->
             MessageBubble(message = msg)
         }
@@ -403,6 +400,15 @@ fun MessageInput(
                     modifier = Modifier.weight(1f),
                     value = message,
                     onValueChange = { message = it },
+
+                    // 👉 Делаем поле многострочным
+                    singleLine = false,
+                    maxLines = 5, // сколько строк максимум показать
+
+                    keyboardOptions = KeyboardOptions.Default.copy(
+                        imeAction = ImeAction.Default  // чтобы клавиатура не пыталась "отправить"
+                    ),
+
                     shape = RoundedCornerShape(24.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = Color(0xFFE8F8FE),
@@ -411,6 +417,7 @@ fun MessageInput(
                         unfocusedBorderColor = Color.Transparent
                     )
                 )
+
 
                 // КНОПКА ОТПРАВКИ
                 IconButton(

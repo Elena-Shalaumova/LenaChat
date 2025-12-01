@@ -148,6 +148,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             _messages.value = _messages.value + userMsg
 
             // плейсхолдер ассистента
+            //Плейсхолдер — это временное “пустое” сообщение ассистента, которое ты вставляешь в список сообщений до того, как пришёл настоящий ответ.
+            //
+            //То есть ты заранее добавляешь пузырёк бота, чтобы потом постепенно записывать в него текст (стриминг).
             val placeholderIndex = _messages.value.size
             _messages.value = _messages.value + MessageModel(
                 id = -2L,
@@ -188,16 +191,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Псевдо-стрим: постепенно дописываем текст ответа в уже существующий
-     * плейсхолдер ассистента (по индексу).
-     */
+    //постепенно дописываем текст ответа в уже существующий плейсхолдер ассистента (по индексу).
     private suspend fun streamAiMessageInto(index: Int, full: MessageModel) {
         val fullText = full.text.orEmpty()
         if (fullText.isEmpty()) return
 
-        val chunkSize = 8     // сколько символов добавляем за шаг
-        val delayMs = 35L     // пауза между шагами (мс)
+        val chunkSize = 4     // сколько символов добавляем за шаг
+        val delayMs = 55L     // пауза между шагами (мс)
 
         for (i in fullText.indices step chunkSize) {
             val end = minOf(i + chunkSize, fullText.length)
