@@ -453,6 +453,7 @@ fun MessageInput(
 
 
                 // КНОПКА ОТПРАВКИ
+                val isSendEnabled = !isAiBusy && (message.isNotEmpty() || hasAttachment)
                 IconButton(
                     onClick = {
                         if (message.isNotEmpty() || hasAttachment) {
@@ -460,12 +461,18 @@ fun MessageInput(
                             message = ""
                         }
                     },
-                      enabled = !isAiBusy && (message.isNotEmpty() || hasAttachment)
+                      //enabled = !isAiBusy && (message.isNotEmpty() || hasAttachment)
+                    enabled = isSendEnabled
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Send,
                         contentDescription = "Send",
-                        tint = MaterialTheme.colorScheme.primary
+                        //tint = MaterialTheme.colorScheme.primary
+                        tint = if (isSendEnabled) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            Color.Gray
+                        }
                     )
                 }
             }

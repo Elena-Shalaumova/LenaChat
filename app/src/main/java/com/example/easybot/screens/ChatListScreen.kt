@@ -62,7 +62,8 @@ fun ChatListScreen(
                 onClick = { 
                     // Добавляем индекс к названию нового чата
                     val nextChatNumber = chats.size + 1
-                    viewModel.createChat("Новый чат #$nextChatNumber") 
+
+                    viewModel.createChat("Чат $nextChatNumber")
                 },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
