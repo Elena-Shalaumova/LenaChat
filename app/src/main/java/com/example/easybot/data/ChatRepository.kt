@@ -5,6 +5,7 @@ import com.example.easybot.*
 import com.example.easybot.data.mappers.toModels
 import com.example.easybot.screens.theme.MessageModel
 
+//подключение к бэку
 class ChatRepository(
     private val api: WebApiChatAI = provideApi(),
 ) {

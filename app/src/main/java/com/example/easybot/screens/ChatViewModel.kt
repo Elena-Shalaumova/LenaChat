@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull   // <--- ВАЖНО
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -19,10 +20,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _messages = MutableStateFlow<List<MessageModel>>(emptyList())
     val messages: StateFlow<List<MessageModel>> = _messages.asStateFlow()
-
-    // флаг: ИИ сейчас отвечает или нет
-    //private val _isAiBusy = MutableStateFlow(false)
-    //val isAiBusy: StateFlow<Boolean> = _isAiBusy.asStateFlow()
 
     // инициализация при заходе в чат
     fun init(chatId: Long) {
@@ -74,16 +71,28 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             try {
-                // 3. получаем полный ответ от репозитория
-                val ai = repository.sendTextMessage(chatId.toInt(), question)
+                // 3. ЖДЁМ ОТВЕТ НЕ ДОЛЬШЕ 3 МИНУТ
+                val ai = withTimeoutOrNull(3 * 60_000L) {
+                    repository.sendTextMessage(chatId.toInt(), question)
+                }
 
-                // 4. “печатаем” его внутрь плейсхолдера
-                streamAiMessageInto(placeholderIndex, ai)
+                if (ai == null) {
+                    // таймаут – заменяем плейсхолдер текстом ошибки
+                    setErrorToPlaceholder(
+                        placeholderIndex,
+                        "Ответ занял больше 3 минут, запрос отменён."
+                    )
+                } else {
+                    // 4. “печатаем” его внутрь плейсхолдера
+                    streamAiMessageInto(placeholderIndex, ai)
+                }
 
-                // при желании можно после этого дернуть loadMessages() для sync с БД
-                // loadMessages()
             } catch (e: Exception) {
                 e.printStackTrace()
+                setErrorToPlaceholder(
+                    placeholderIndex,
+                    "Произошла ошибка при получении ответа."
+                )
             }
         }
     }
@@ -94,7 +103,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
 
-            // пузырь пользователя
             val userMsg = MessageModel(
                 id = -1L,
                 chatId = chatId,
@@ -106,7 +114,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             )
             _messages.value = _messages.value + userMsg
 
-            // плейсхолдер ассистента
             val placeholderIndex = _messages.value.size
             _messages.value = _messages.value + MessageModel(
                 id = -2L,
@@ -119,16 +126,29 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             try {
-                val ai = repository.sendImageMessage(
-                    chatId = chatId.toInt(),
-                    base64Image = base64Image,
-                    prompt = prompt
-                )
+                val ai = withTimeoutOrNull(3 * 60_000L) {
+                    repository.sendImageMessage(
+                        chatId = chatId.toInt(),
+                        base64Image = base64Image,
+                        prompt = prompt
+                    )
+                }
 
-                streamAiMessageInto(placeholderIndex, ai)
+                if (ai == null) {
+                    setErrorToPlaceholder(
+                        placeholderIndex,
+                        "Ответ занял больше 3 минут, запрос отменён."
+                    )
+                } else {
+                    streamAiMessageInto(placeholderIndex, ai)
+                }
 
             } catch (e: Exception) {
                 e.printStackTrace()
+                setErrorToPlaceholder(
+                    placeholderIndex,
+                    "Произошла ошибка при получении ответа."
+                )
             }
         }
     }
@@ -139,7 +159,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
 
-            // пузырь пользователя
             val userMsg = MessageModel(
                 id = -1L,
                 chatId = chatId,
@@ -151,10 +170,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             )
             _messages.value = _messages.value + userMsg
 
-            // плейсхолдер ассистента
-            //Плейсхолдер — это временное “пустое” сообщение ассистента, которое ты вставляешь в список сообщений до того, как пришёл настоящий ответ.
-            //
-            //То есть ты заранее добавляешь пузырёк бота, чтобы потом постепенно записывать в него текст (стриминг).
             val placeholderIndex = _messages.value.size
             _messages.value = _messages.value + MessageModel(
                 id = -2L,
@@ -167,16 +182,29 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             try {
-                val ai = repository.sendImagesMessage(
-                    chatId = chatId.toInt(),
-                    images = images,
-                    prompt = prompt
-                )
+                val ai = withTimeoutOrNull(3 * 60_000L) {
+                    repository.sendImagesMessage(
+                        chatId = chatId.toInt(),
+                        images = images,
+                        prompt = prompt
+                    )
+                }
 
-                streamAiMessageInto(placeholderIndex, ai)
+                if (ai == null) {
+                    setErrorToPlaceholder(
+                        placeholderIndex,
+                        "Ответ занял больше 3 минут, запрос отменён."
+                    )
+                } else {
+                    streamAiMessageInto(placeholderIndex, ai)
+                }
 
             } catch (e: Exception) {
                 e.printStackTrace()
+                setErrorToPlaceholder(
+                    placeholderIndex,
+                    "Произошла ошибка при получении ответа."
+                )
             }
         }
     }
@@ -195,17 +223,21 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // --- вспомогательная функция: записать текст ошибки в плейсхолдер ---
+    private fun setErrorToPlaceholder(index: Int, errorText: String) {
+        val updated = _messages.value.toMutableList()
+        val old = updated.getOrNull(index) ?: return
+        updated[index] = old.copy(text = errorText)
+        _messages.value = updated
+    }
 
-
-
-
-    //постепенно дописываем текст ответа в уже существующий плейсхолдер ассистента (по индексу).
+    // постепенный стриминг ответа в плейсхолдер
     private suspend fun streamAiMessageInto(index: Int, full: MessageModel) {
         val fullText = full.text.orEmpty()
         if (fullText.isEmpty()) return
 
-        val chunkSize = 4     // сколько символов добавляем за шаг
-        val delayMs = 55L     // пауза между шагами (мс)
+        val chunkSize = 4
+        val delayMs = 55L
 
         for (i in fullText.indices step chunkSize) {
             val end = minOf(i + chunkSize, fullText.length)
