@@ -8,11 +8,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.easybot.LoginReq
 import com.example.easybot.UserDto
 import com.example.easybot.RegisterDto
+import com.example.easybot.UserSession
 import com.example.easybot.WebApiChatAI
 import com.example.easybot.provideApi
 import kotlinx.coroutines.launch
 
-class RegistrationpageVM(private val api: WebApiChatAI = provideApi()
+class RegistrationpageVM(private val api: WebApiChatAI = provideApi(UserSession.apiBaseUrl)
 ) : ViewModel() {
     var login by mutableStateOf("")
     var password by mutableStateOf("")

@@ -56,6 +56,9 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardOptions
+import com.example.easybot.SettingsRequest
+import com.example.easybot.UserSession
+import com.example.easybot.api
 import kotlinx.coroutines.delay
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
@@ -77,9 +80,68 @@ fun ChatPage(
     modifier: Modifier = Modifier,
     viewModel: ChatViewModel = viewModel()
 ) {
+    val userId = UserSession.userId?.toInt()
+    val coroutineScope = rememberCoroutineScope()
+
+    var isLoading by remember { mutableStateOf(false) }
+    var streamEnabled by remember { mutableStateOf(false) }
+    // выбранная модель на время сессии
+    var selectedModel by remember {
+        mutableStateOf(UserSession.selectedModel ?: "")
+    }
+
+    // список моделей с бэка
+    var oLlamaModels by remember { mutableStateOf<List<String>>(emptyList()) }
     // при входе в экран инициализируем чат
     LaunchedEffect(chatId) {
         viewModel.init(chatId)
+
+        val id = userId ?: return@LaunchedEffect   // если null – просто ничего не делаем
+
+        // 1. Модели
+        try {
+            val models = api.getAvailableModels()
+            oLlamaModels = models
+        } catch (e: Exception) {
+            e.printStackTrace()
+            oLlamaModels = emptyList()
+        }
+
+        // 2. Настройки (как в SettingsScreen)
+        try {
+            val settings = api.getSettings(id)       // id: Int
+
+            streamEnabled = settings.stream
+            selectedModel = settings.model.orEmpty()
+            UserSession.selectedModel = settings.model
+
+        } catch (e: retrofit2.HttpException) {
+            if (e.code() == 404) {
+                val defaultModel = oLlamaModels.firstOrNull()
+                streamEnabled = false
+                selectedModel = defaultModel.orEmpty()
+                UserSession.selectedModel = selectedModel
+
+                if (defaultModel != null) {
+                    try {
+                        api.saveSettings(
+                            request = SettingsRequest(
+                                id = id,                       // id: Int
+                                stream = streamEnabled,
+                                model = selectedModel
+                            )
+                        )
+                    } catch (saveEx: Exception) {
+                        saveEx.printStackTrace()
+                    }
+                }
+            } else {
+                e.printStackTrace()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
     }
 
     val messages by viewModel.messages.collectAsState()
@@ -142,7 +204,10 @@ fun ChatPage(
             }
         }
 
+    
+
     Column(modifier = modifier.fillMaxSize()) {
+
 
         AppHeader(title = chatTitle, onClear = { viewModel.clearCurrentChat() })
 

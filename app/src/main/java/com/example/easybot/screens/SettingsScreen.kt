@@ -35,15 +35,19 @@ import retrofit2.HttpException
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(navController: NavController) {
+    // Берём текущее значение из UserSession, чтобы при открытии экрана оно подставилось
+    var apiBaseUrl by remember { mutableStateOf(UserSession.apiBaseUrl)}
     val userLogin = UserSession.login ?: "N/A"
     var streamEnabled by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var isClearingChats by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val api = remember { provideApi() }
+    val api = remember { provideApi(apiBaseUrl) }
     val userId = (UserSession.userId ?: 0L).toInt()
-    var selectedModel by remember { mutableStateOf("") }
+    var selectedModel by remember {
+        mutableStateOf(UserSession.selectedModel ?: "")
+    }
     var isModelDropdownExpanded by remember { mutableStateOf(false) }
     var ollamaVersion by remember { mutableStateOf<String?>(null) }
     var ollamaModels by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -209,6 +213,48 @@ fun SettingsScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // --- Новый блок для baseUrl --- //
+            Text(
+                text = "Строка подключения к API",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = apiBaseUrl,
+                onValueChange = { apiBaseUrl = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                placeholder = { Text("http://192.168.3.8:5167/") }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    if (apiBaseUrl.isNotBlank()) {
+                        UserSession.apiBaseUrl = apiBaseUrl
+                        Toast.makeText(
+                            context,
+                            "Строка подключения к API обновлена",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "URL не может быть пустым",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            ) {
+                Text("Сохранить")
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             Text(
                 text = "Модель ИИ (Ollama)",
                 style = MaterialTheme.typography.titleMedium,
@@ -242,6 +288,7 @@ fun SettingsScreen(navController: NavController) {
                             text = { Text(modelName) },
                             onClick = {
                                 selectedModel = modelName
+                                UserSession.selectedModel = modelName
                                 isModelDropdownExpanded = false
                             }
                         )

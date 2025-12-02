@@ -10,6 +10,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
 import kotlin.collections.List
+import com.example.easybot.UserSession
 
 // --- DTO для настроек ---
 data class SettingsDto(val id: Int, val userId: Int, val stream: Boolean, val model: String?)
@@ -117,18 +118,44 @@ interface WebApiChatAI {
 
 
 //фабрика
-fun provideApi(baseUrl: String = "http://10.0.2.2:5167/"): WebApiChatAI {
-    val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+//fun provideApi(baseUrl: String = "http://192.168.3.8:5167/"): WebApiChatAI {
+//    val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+//
+//    val log = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
+//    //val client = OkHttpClient.Builder().addInterceptor(log).build()
+//    val client = OkHttpClient.Builder()
+//        .addInterceptor(log)
+//        .connectTimeout(60, TimeUnit.SECONDS)          // подключение к серверу
+//        .writeTimeout(5, TimeUnit.MINUTES)             // загрузка текста/картинки
+//        .readTimeout(0, TimeUnit.SECONDS)              // ❗ ждать бесконечно
+//        .callTimeout(0, TimeUnit.MILLISECONDS)         // ❗ полный запрет глобального timeout
+//        .retryOnConnectionFailure(true)                // авто-повтор при обрыве соединения
+//        .build()
+//
+//    return Retrofit.Builder()
+//        .baseUrl(baseUrl)
+//        .addConverterFactory(MoshiConverterFactory.create(moshi))
+//        .client(client)
+//        .build()
+//        .create(WebApiChatAI::class.java)
+//}
+//
+fun provideApi(baseUrl: String): WebApiChatAI {
+    val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
 
-    val log = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
-    //val client = OkHttpClient.Builder().addInterceptor(log).build()
+    val log = HttpLoggingInterceptor().apply {
+        level = HttpLoggingInterceptor.Level.BODY
+    }
+
     val client = OkHttpClient.Builder()
         .addInterceptor(log)
-        .connectTimeout(60, TimeUnit.SECONDS)          // подключение к серверу
-        .writeTimeout(5, TimeUnit.MINUTES)             // загрузка текста/картинки
-        .readTimeout(0, TimeUnit.SECONDS)              // ❗ ждать бесконечно
-        .callTimeout(0, TimeUnit.MILLISECONDS)         // ❗ полный запрет глобального timeout
-        .retryOnConnectionFailure(true)                // авто-повтор при обрыве соединения
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(5, TimeUnit.MINUTES)
+        .readTimeout(0, TimeUnit.SECONDS)
+        .callTimeout(0, TimeUnit.MILLISECONDS)
+        .retryOnConnectionFailure(true)
         .build()
 
     return Retrofit.Builder()
@@ -138,3 +165,8 @@ fun provideApi(baseUrl: String = "http://10.0.2.2:5167/"): WebApiChatAI {
         .build()
         .create(WebApiChatAI::class.java)
 }
+
+// Вместо фиксированного api делаем геттер,
+// который всегда берет актуальный URL из UserSession
+val api: WebApiChatAI
+    get() = provideApi(UserSession.apiBaseUrl)
