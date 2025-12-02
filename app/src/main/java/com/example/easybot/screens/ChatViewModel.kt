@@ -21,6 +21,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _messages = MutableStateFlow<List<MessageModel>>(emptyList())
     val messages: StateFlow<List<MessageModel>> = _messages.asStateFlow()
 
+    private val _isAiBusy = MutableStateFlow(false)
+    val isAiBusy: StateFlow<Boolean> = _isAiBusy.asStateFlow()
+
     // инициализация при заходе в чат
     fun init(chatId: Long) {
         if (this.chatId == chatId) return
@@ -45,7 +48,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         if (chatId == -1L || question.isBlank()) return
 
         viewModelScope.launch {
-
+            if (_isAiBusy.value) return@launch
+            _isAiBusy.value = true
             // 1. пузырь пользователя
             val userMsg = MessageModel(
                 id = -1L,
@@ -93,6 +97,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     placeholderIndex,
                     "Произошла ошибка при получении ответа."
                 )
+            } finally {
+                _isAiBusy.value = false
             }
         }
     }
@@ -102,6 +108,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         if (chatId == -1L) return
 
         viewModelScope.launch {
+
+            if (_isAiBusy.value) return@launch
+            _isAiBusy.value = true
 
             val userMsg = MessageModel(
                 id = -1L,
@@ -149,6 +158,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     placeholderIndex,
                     "Произошла ошибка при получении ответа."
                 )
+            } finally {
+                _isAiBusy.value = false
             }
         }
     }
@@ -158,6 +169,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         if (chatId == -1L || images.isEmpty()) return
 
         viewModelScope.launch {
+            if (_isAiBusy.value) return@launch
+            _isAiBusy.value = true
 
             val userMsg = MessageModel(
                 id = -1L,
@@ -205,6 +218,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     placeholderIndex,
                     "Произошла ошибка при получении ответа."
                 )
+            } finally {
+                _isAiBusy.value = false
             }
         }
     }

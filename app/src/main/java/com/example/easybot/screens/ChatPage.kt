@@ -84,7 +84,7 @@ fun ChatPage(
 
     val messages by viewModel.messages.collectAsState()
     val context = LocalContext.current
-    //val isAiBusy by viewModel.isAiBusy.collectAsState()
+    val isAiBusy by viewModel.isAiBusy.collectAsState()
 
 
     // ---- прикрепленные картинки ----
@@ -161,6 +161,7 @@ fun ChatPage(
         // ---------- 🔥 НИЖНЯЯ ПАНЕЛЬ ВВОДА ----------
         MessageInput(
             hasAttachment = pendingImagesBase64.isNotEmpty(),
+            isAiBusy = isAiBusy,
             onMessageSend = { text ->
                 val imgs = pendingImagesBase64
 
@@ -372,6 +373,7 @@ fun MessageBubble(message: MessageModel) {
 @Composable
 fun MessageInput(
     hasAttachment: Boolean,
+    isAiBusy: Boolean,
     onMessageSend: (String) -> Unit,
     onPickImage: () -> Unit,
     onPickMultipleImages: () -> Unit,
@@ -453,15 +455,12 @@ fun MessageInput(
                 // КНОПКА ОТПРАВКИ
                 IconButton(
                     onClick = {
-                        // если ИИ занят – просто выходим
-                        // if (isAiBusy) return@IconButton
-
                         if (message.isNotEmpty() || hasAttachment) {
                             onMessageSend(message)
                             message = ""
                         }
                     },
-                    //  enabled = !isAiBusy && (message.isNotEmpty() || hasAttachment)
+                      enabled = !isAiBusy && (message.isNotEmpty() || hasAttachment)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Send,
