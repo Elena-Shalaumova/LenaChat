@@ -56,6 +56,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardOptions
+import kotlinx.coroutines.delay
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
     return try {
@@ -274,6 +275,33 @@ fun MessageList(
 fun MessageBubble(message: MessageModel) {
     val isUserMessage = message.role == 1   // 1 – пользователь, 0 – модель
 
+    // считаем, что это "пишущий" бот:
+    // плейсхолдер, который ты добавляешь с id = -2L и text = "..."
+    val isTypingPlaceholder = (message.id == -2L && message.text == "...")
+
+    // локальный текст, который реально рисуем в пузырьке
+    var visibleText by remember(message.id, message.text) {
+        mutableStateOf(message.text.orEmpty())
+    }
+
+    // анимация "..." → "......" → "........."
+    LaunchedEffect(isTypingPlaceholder, message.text) {
+        if (!isTypingPlaceholder) {
+            // как только в это сообщение прилетел нормальный текст – просто показываем его
+            visibleText = message.text.orEmpty()
+            return@LaunchedEffect
+        }
+
+        val frames = listOf("...", "......", ".........")
+
+        while (true) {
+            for (frame in frames) {
+                visibleText = frame
+                delay(350L)   // скорость мигания
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -289,10 +317,10 @@ fun MessageBubble(message: MessageModel) {
 
             Column {
                 // ----- ТЕКСТ -----
-                if (!message.text.isNullOrBlank()) {
+                if (visibleText.isNotBlank()) {
                     SelectionContainer {
                         Text(
-                            text = message.text,
+                            text = visibleText,
                             fontWeight = FontWeight.W500,
                             color = Color.Black
                         )
@@ -307,10 +335,8 @@ fun MessageBubble(message: MessageModel) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(message.images) { base64 ->
-                            // декодируем base64 -> Bitmap
                             val bitmap = remember(base64) {
                                 try {
-                                    // если вдруг приходит с заголовком
                                     val clean = base64.substringAfter("base64,", base64)
                                     val bytes = Base64.decode(clean, Base64.DEFAULT)
                                     BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
@@ -324,7 +350,7 @@ fun MessageBubble(message: MessageModel) {
                                     bitmap = bitmap.asImageBitmap(),
                                     contentDescription = message.text ?: "image",
                                     modifier = Modifier
-                                        .size(140.dp) // можно поменять размер
+                                        .size(140.dp)
                                         .clip(RoundedCornerShape(12.dp)),
                                     contentScale = ContentScale.Crop
                                 )
@@ -342,6 +368,7 @@ fun MessageBubble(message: MessageModel) {
         }
     }
 }
+
 @Composable
 fun MessageInput(
     hasAttachment: Boolean,
@@ -444,87 +471,86 @@ fun MessageInput(
                 }
             }
 
-                // ВЫПАДАЮЩЕЕ МЕНЮ ВЛОЖЕНИЙ
-                DropdownMenu(
-                    expanded = showAttachments,
-                    onDismissRequest = { showAttachments = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Сделать фото") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Filled.CameraAlt,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            showAttachments = false
-                            onCaptureImage()
-                        }
-                    )
+            // ВЫПАДАЮЩЕЕ МЕНЮ ВЛОЖЕНИЙ
+            DropdownMenu(
+                expanded = showAttachments,
+                onDismissRequest = { showAttachments = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Сделать фото") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.CameraAlt,
+                            contentDescription = null
+                        )
+                    },
+                    onClick = {
+                        showAttachments = false
+                        onCaptureImage()
+                    }
+                )
 
-                    DropdownMenuItem(
-                        text = { Text("Выбрать одно фото") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Collections,
-                                contentDescription = "Выбрать одно фото"
-                            )
-                        },
-                        onClick = {
-                            showAttachments = false
-                            onPickImage()
-                        }
-                    )
+                DropdownMenuItem(
+                    text = { Text("Выбрать одно фото") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Collections,
+                            contentDescription = "Выбрать одно фото"
+                        )
+                    },
+                    onClick = {
+                        showAttachments = false
+                        onPickImage()
+                    }
+                )
 
-                    DropdownMenuItem(
-                        text = { Text("Выбрать несколько фото") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Collections,
-                                contentDescription = "Выбрать несколько фото"
-                            )
-                        },
-                        onClick = {
-                            showAttachments = false
-                            onPickMultipleImages()
-                        }
-                    )
-                }
-            }
-        }
-    }
-
-    /** Bitmap -> base64 */
-    private fun bitmapToBase64(bitmap: Bitmap): String {
-        val stream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
-        val bytes = stream.toByteArray()
-        return Base64.encodeToString(bytes, Base64.NO_WRAP)
-    }
-
-    @Composable
-    fun AppHeader(title: String, onClear: () -> Unit = {}) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.primary)
-                .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = title,
-                color = Color.White,
-                fontSize = 22.sp,
-                modifier = Modifier.weight(1f)
-            )
-            TextButton(onClick = onClear) {
-                Text(
-                    text = "Очистить",
-                    color = Color.White,
-                    fontSize = 16.sp
+                DropdownMenuItem(
+                    text = { Text("Выбрать несколько фото") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Collections,
+                            contentDescription = "Выбрать несколько фото"
+                        )
+                    },
+                    onClick = {
+                        showAttachments = false
+                        onPickMultipleImages()
+                    }
                 )
             }
         }
     }
+}
 
+/** Bitmap -> base64 */
+private fun bitmapToBase64(bitmap: Bitmap): String {
+    val stream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
+    val bytes = stream.toByteArray()
+    return Base64.encodeToString(bytes, Base64.NO_WRAP)
+}
+
+@Composable
+fun AppHeader(title: String, onClear: () -> Unit = {}) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.primary)
+            .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            color = Color.White,
+            fontSize = 22.sp,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = onClear) {
+            Text(
+                text = "Очистить",
+                color = Color.White,
+                fontSize = 16.sp
+            )
+        }
+    }
+}
