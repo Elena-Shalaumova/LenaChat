@@ -38,6 +38,7 @@ fun SettingsScreen(navController: NavController) {
     val userLogin = UserSession.login ?: "N/A"
     var streamEnabled by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+    var isClearingChats by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val api = remember { provideApi() }
@@ -260,6 +261,57 @@ fun SettingsScreen(navController: NavController) {
             ) {
 
             }
+
+            Button(
+                onClick = {
+                    val userId = UserSession.userId?.toInt()
+                    if (userId == null) {
+                        Toast.makeText(context, "Пользователь не авторизован", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    coroutineScope.launch {
+                        isClearingChats = true
+                        try {
+                            val chats = api.getChats(userId)
+
+                            if (chats.isEmpty()) {
+                                Toast.makeText(context, "У вас нет чатов для удаления", Toast.LENGTH_SHORT).show()
+                            } else {
+                                chats.forEach { chat ->
+                                    val response = api.deleteChat(chat.id)
+                                    if (!response.isSuccessful) {
+                                        throw IllegalStateException("Не удалось очистить чат ${chat.id}")
+                                    }
+                                }
+                                Toast.makeText(context, "Все чаты удалены", Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(
+                                context,
+                                "Не удалось удалить чаты: ${e.message ?: "неизвестная ошибка"}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } finally {
+                            isClearingChats = false
+                        }
+                    }
+                },
+                enabled = !isClearingChats && !isLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = Color.White,
+                    disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+                )
+            ) {
+                Text(if (isClearingChats) "Очистка..." else "Очистить все чаты")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
 
             // Существующая кнопка "Сохранить"
             Button(

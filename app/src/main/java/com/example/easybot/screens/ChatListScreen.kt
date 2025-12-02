@@ -24,14 +24,31 @@ import com.example.easybot.ChatListViewModel
 import com.example.easybot.navigation.Routes
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 @Composable
 fun ChatListScreen(
     navController: NavHostController,
     viewModel: ChatListViewModel = viewModel()
 ) {
     val chats by viewModel.chats.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadChats()
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     Scaffold(
         containerColor = Color(0xFFE8F5FE),
         topBar = {
