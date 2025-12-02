@@ -20,6 +20,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _messages = MutableStateFlow<List<MessageModel>>(emptyList())
     val messages: StateFlow<List<MessageModel>> = _messages.asStateFlow()
 
+    // флаг: ИИ сейчас отвечает или нет
+    //private val _isAiBusy = MutableStateFlow(false)
+    //val isAiBusy: StateFlow<Boolean> = _isAiBusy.asStateFlow()
+
     // инициализация при заходе в чат
     fun init(chatId: Long) {
         if (this.chatId == chatId) return
@@ -190,20 +194,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
-    fun clearChat() = clearCurrentChat()
 
-    fun clearContext() {
-        if (chatId == -1L) return
-
-        viewModelScope.launch {
-            try {
-                repository.clearContext(chatId.toInt())
-                // здесь можно повесить баннер/снэкбар: "Контекст очищен"
-            } catch (e: Exception) {
-                // лог/обработка ошибки
-            }
-        }
-    }
 
 
 

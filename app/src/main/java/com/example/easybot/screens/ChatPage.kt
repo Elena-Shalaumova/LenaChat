@@ -1,3 +1,4 @@
+
 package com.example.easybot.screens
 
 import android.Manifest
@@ -82,6 +83,8 @@ fun ChatPage(
 
     val messages by viewModel.messages.collectAsState()
     val context = LocalContext.current
+    //val isAiBusy by viewModel.isAiBusy.collectAsState()
+
 
     // ---- прикрепленные картинки ----
     var pendingImagesBase64 by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -140,14 +143,8 @@ fun ChatPage(
 
     Column(modifier = modifier.fillMaxSize()) {
 
-        //AppHeader(title = chatTitle, onClear = { viewModel.clearCurrentChat() })
-        AppHeader(
-            title = chatTitle,
-//            onClearChat = { viewModel.clearChat(chatId) },
-//            onClearContext = { viewModel.clearContext(chatId) }
-            onClearChat = { viewModel.clearChat() },     // без chatId, он уже внутри VM
-            onClearContext = { viewModel.clearContext() }
-        )
+        AppHeader(title = chatTitle, onClear = { viewModel.clearCurrentChat() })
+
 
         Box(modifier = Modifier.weight(1f)) {
             if (messages.isEmpty()) {
@@ -429,11 +426,15 @@ fun MessageInput(
                 // КНОПКА ОТПРАВКИ
                 IconButton(
                     onClick = {
+                        // если ИИ занят – просто выходим
+                        // if (isAiBusy) return@IconButton
+
                         if (message.isNotEmpty() || hasAttachment) {
                             onMessageSend(message)
                             message = ""
                         }
-                    }
+                    },
+                    //  enabled = !isAiBusy && (message.isNotEmpty() || hasAttachment)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Send,
@@ -443,128 +444,87 @@ fun MessageInput(
                 }
             }
 
-            // ВЫПАДАЮЩЕЕ МЕНЮ ВЛОЖЕНИЙ
-            DropdownMenu(
-                expanded = showAttachments,
-                onDismissRequest = { showAttachments = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Сделать фото") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.CameraAlt,
-                            contentDescription = null
-                        )
-                    },
-                    onClick = {
-                        showAttachments = false
-                        onCaptureImage()
-                    }
-                )
+                // ВЫПАДАЮЩЕЕ МЕНЮ ВЛОЖЕНИЙ
+                DropdownMenu(
+                    expanded = showAttachments,
+                    onDismissRequest = { showAttachments = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Сделать фото") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.CameraAlt,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            showAttachments = false
+                            onCaptureImage()
+                        }
+                    )
 
-                DropdownMenuItem(
-                    text = { Text("Выбрать одно фото") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Collections,
-                            contentDescription = "Выбрать одно фото"
-                        )
-                    },
-                    onClick = {
-                        showAttachments = false
-                        onPickImage()
-                    }
-                )
+                    DropdownMenuItem(
+                        text = { Text("Выбрать одно фото") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Collections,
+                                contentDescription = "Выбрать одно фото"
+                            )
+                        },
+                        onClick = {
+                            showAttachments = false
+                            onPickImage()
+                        }
+                    )
 
-                DropdownMenuItem(
-                    text = { Text("Выбрать несколько фото") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Collections,
-                            contentDescription = "Выбрать несколько фото"
-                        )
-                    },
-                    onClick = {
-                        showAttachments = false
-                        onPickMultipleImages()
-                    }
+                    DropdownMenuItem(
+                        text = { Text("Выбрать несколько фото") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Collections,
+                                contentDescription = "Выбрать несколько фото"
+                            )
+                        },
+                        onClick = {
+                            showAttachments = false
+                            onPickMultipleImages()
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    /** Bitmap -> base64 */
+    private fun bitmapToBase64(bitmap: Bitmap): String {
+        val stream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
+        val bytes = stream.toByteArray()
+        return Base64.encodeToString(bytes, Base64.NO_WRAP)
+    }
+
+    @Composable
+    fun AppHeader(title: String, onClear: () -> Unit = {}) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.primary)
+                .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 22.sp,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onClear) {
+                Text(
+                    text = "Очистить",
+                    color = Color.White,
+                    fontSize = 16.sp
                 )
             }
         }
     }
-}
-
-/** Bitmap -> base64 */
-private fun bitmapToBase64(bitmap: Bitmap): String {
-    val stream = ByteArrayOutputStream()
-    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
-    val bytes = stream.toByteArray()
-    return Base64.encodeToString(bytes, Base64.NO_WRAP)
-}
-
-//@Composable
-//fun AppHeader(title: String, onClear: () -> Unit = {}) {
-//    Row(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .background(MaterialTheme.colorScheme.primary)
-//            .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp),
-//        verticalAlignment = Alignment.CenterVertically
-//    ) {
-//        Text(
-//            text = title,
-//            color = Color.White,
-//            fontSize = 22.sp,
-//            modifier = Modifier.weight(1f)
-//        )
-//        TextButton(onClick = onClear) {
-//            Text(
-//                text = "Очистить",
-//                color = Color.White,
-//                fontSize = 16.sp
-//            )
-//        }
-//    }
-//}
-
-@Composable
-fun AppHeader(
-    title: String,
-    onClearChat: () -> Unit,
-    onClearContext: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(color = MaterialTheme.colorScheme.primary)
-            .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // ---- Заголовок ----
-        Text(
-            text = title,
-            color = Color.White,
-            fontSize = 22.sp,
-            modifier = Modifier.weight(1f)
-        )
-
-        // ---- Новая кнопка: Сбросить контекст ----
-        TextButton(onClick = onClearContext) {
-            Text(
-                text = "Контекст",
-                color = Color.White,
-                fontSize = 16.sp
-            )
-        }
-
-        // ---- Старая кнопка: Полная очистка чата ----
-        TextButton(onClick = onClearChat) {
-            Text(
-                text = "Очистить",
-                color = Color.White,
-                fontSize = 16.sp
-            )
-        }
-    }
-}
 

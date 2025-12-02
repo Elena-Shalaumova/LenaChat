@@ -94,8 +94,4 @@ class ChatRepository(
         return listOf(response.aiMessage).toModels().first()
     }
 
-    suspend fun clearContext(chatId: Int) {
-        api.clearContext(chatId)
-    }
-
 }
