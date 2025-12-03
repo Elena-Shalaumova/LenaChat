@@ -62,6 +62,8 @@ import com.example.easybot.api
 import kotlinx.coroutines.delay
 import android.widget.Toast
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Info
+
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
     return try {
@@ -97,6 +99,8 @@ fun ChatPage(
     // список моделей с бэка
     var oLlamaModels by remember { mutableStateOf<List<String>>(emptyList()) }
 
+    var temperature by remember { mutableStateOf(UserSession.temperature ?: 0.7) }
+    var maxTokens by remember { mutableStateOf(UserSession.maxTokens ?: 1024) }
     // ---------- ШАГ 2: та самая функция сохранения из чата ----------
     fun saveSettingsFromChat(newModel: String) {
         val id = userId ?: return
@@ -158,7 +162,13 @@ fun ChatPage(
 
             streamEnabled = settings.stream
             selectedModel = settings.model.orEmpty()
+
+           // temperature = settings.temperature ?: 0.7
+           // maxTokens  = settings.maxTokens ?: 1024
+
             UserSession.selectedModel = selectedModel
+            UserSession.temperature   = temperature
+            UserSession.maxTokens     = maxTokens
 
         } catch (e: retrofit2.HttpException) {
             if (e.code() == 404) {
@@ -254,11 +264,25 @@ fun ChatPage(
             title = chatTitle,
             models = oLlamaModels,
             selectedModel = selectedModel,
+            temperature = temperature,
+            maxTokens = maxTokens,
+
             onModelSelected = { model ->
                 selectedModel = model
                 UserSession.selectedModel = model
-                saveSettingsFromChat(model)   // сохраняем как на SettingsPage
+                saveSettingsFromChat(model)
             },
+
+            onTemperatureChange = { newTemp ->
+                temperature = newTemp
+                UserSession.temperature = newTemp
+            },
+
+            onMaxTokensChange = { tokens ->
+                maxTokens = tokens
+                UserSession.maxTokens = tokens
+            },
+
             onClear = { viewModel.clearCurrentChat() }
         )
 
@@ -647,7 +671,11 @@ fun AppHeader(
     title: String,
     models: List<String>,
     selectedModel: String,
+    temperature: Double,
+    maxTokens: Int,
     onModelSelected: (String) -> Unit,
+    onTemperatureChange: (Double) -> Unit,
+    onMaxTokensChange: (Int) -> Unit,
     onClear: () -> Unit = {}
 ) {
     Column(
@@ -656,6 +684,8 @@ fun AppHeader(
             .background(MaterialTheme.colorScheme.primary)
             .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp)
     ) {
+
+        // ---------- Верхняя строка: название чата + "Очистить" ----------
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -678,13 +708,104 @@ fun AppHeader(
         if (models.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
 
-            // твой общий селектор моделей
+            // ---------- Выпадающее меню моделей + ползунки ----------
             ModelSelector(
                 models = models,
                 selectedModel = selectedModel,
                 onModelSelected = onModelSelected,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                extraContent = {
+                    // 👉 сюда кладём температуру и maxTokens
+
+                    var showTempInfo by remember { mutableStateOf(false) }
+                    var showTokensInfo by remember { mutableStateOf(false) }
+
+                    // ----- ТЕМПЕРАТУРА + ? -----
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Температура: ${"%.2f".format(temperature)}",
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { showTempInfo = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Что такое температура?"
+                            )
+                        }
+                    }
+
+                    Slider(
+                        value = temperature.toFloat(),
+                        onValueChange = { value ->
+                            onTemperatureChange(value.toDouble())
+                        },
+                        valueRange = 0f..2f
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // ----- МАКСИМАЛЬНАЯ ДЛИНА + ? -----
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Максимальная длина ответа: $maxTokens",
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { showTokensInfo = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Что такое максимальная длина?"
+                            )
+                        }
+                    }
+
+                    Slider(
+                        value = maxTokens.toFloat(),
+                        onValueChange = { value ->
+                            onMaxTokensChange(value.toInt())
+                        },
+                        valueRange = 64f..4096f
+                    )
+
+                    // ===== Диалог для температуры =====
+                    if (showTempInfo) {
+                        AlertDialog(
+                            onDismissRequest = { showTempInfo = false },
+                            title = { Text("Температура") },
+                            text = {
+                                Text(
+                                    "0 — консервативные и предсказуемые ответы\n" +
+                                            "2 — креативные и непредсказуемые ответы"
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showTempInfo = false }) {
+                                    Text("Понятно")
+                                }
+                            }
+                        )
+                    }
+
+                    // ===== Диалог для максимальной длины =====
+                    if (showTokensInfo) {
+                        AlertDialog(
+                            onDismissRequest = { showTokensInfo = false },
+                            title = { Text("Максимальная длина ответа") },
+                            text = {
+                                Text(
+                                    "Ограничивает максимальное количество токенов " +
+                                            "в одном ответе модели. Меньше — короче и быстрее, " +
+                                            "больше — длиннее и детальнее."
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showTokensInfo = false }) {
+                                    Text("Понятно")
+                                }
+                            }
+                        )
+                    }
+                }
             )
-        }
-    }
-}
+        } }}

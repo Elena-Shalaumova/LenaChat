@@ -14,7 +14,7 @@ import com.example.easybot.UserSession
 
 // --- DTO для настроек ---
 data class SettingsDto(val id: Int, val userId: Int, val stream: Boolean, val model: String?)
-data class SettingsRequest(val id: Int, val stream: Boolean, val model: String)
+data class SettingsRequest(val id: Int, val stream: Boolean, val model: String,val temperature: Double?,val maxTokens: Int? )
 data class OllamaVersionDto(val version: String)
 data class OllamaModels(val models: List<String>)
 
