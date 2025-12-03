@@ -63,6 +63,7 @@ import kotlinx.coroutines.delay
 import android.widget.Toast
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.ui.text.input.KeyboardType
 
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
@@ -169,8 +170,8 @@ fun ChatPage(
             val serverModel = settings.model.orEmpty()
             selectedModel = serverModel
 
-            temperature = settings.temperature ?: 0.7
-            maxTokens  = settings.maxTokens ?: 1024
+            temperature = settings.temperature ?: 1.0
+            maxTokens  = settings.maxTokens ?: 1000
 
             UserSession.selectedModel = selectedModel
             UserSession.temperature   = temperature
@@ -210,8 +211,8 @@ fun ChatPage(
                 streamEnabled = false
                 selectedModel = defaultModel.orEmpty()
 
-                temperature = 0.7
-                maxTokens = 1024
+                temperature = 1.0
+                maxTokens = 1000
 
                 UserSession.selectedModel = selectedModel
                 UserSession.temperature   = temperature
@@ -762,7 +763,7 @@ fun AppHeader(
                     var showTempInfo by remember { mutableStateOf(false) }
                     var showTokensInfo by remember { mutableStateOf(false) }
 
-                    // ----- ТЕМПЕРАТУРА + ? -----
+                    // ===== ТЕМПЕРАТУРА + ? =====
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "Температура: ${"%.2f".format(temperature)}",
@@ -787,10 +788,10 @@ fun AppHeader(
 
                     Spacer(Modifier.height(12.dp))
 
-                    // ----- МАКСИМАЛЬНАЯ ДЛИНА + ? -----
+                    // ===== МАКСИМАЛЬНАЯ ДЛИНА (ТОКЕНЫ) + ? =====
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Максимальная длина ответа: $maxTokens",
+                            text = "Максимальная длина ответа (токены)",
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.weight(1f)
                         )
@@ -802,13 +803,30 @@ fun AppHeader(
                         }
                     }
 
-                    Slider(
-                        value = maxTokens.toFloat(),
-                        onValueChange = { value ->
-                            onMaxTokensChange(value.toInt())
+                    var tokensText by remember(maxTokens) {
+                        mutableStateOf(maxTokens.toString())
+                    }
+
+                    OutlinedTextField(
+                        value = tokensText,
+                        onValueChange = { text ->
+                            val digits = text.filter { it.isDigit() }
+                            tokensText = digits
+
+                            if (digits.isNotEmpty()) {
+                                val valueInt = digits.toInt().coerceIn(64, 4096)
+                                onMaxTokensChange(valueInt)
+                            }
                         },
-                        valueRange = 64f..4096f
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp, bottom = 8.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        label = { Text("Например: 512, 1024, 2048") }
                     )
+
+                    Spacer(Modifier.height(8.dp))
 
                     // ===== Диалог для температуры =====
                     if (showTempInfo) {
@@ -848,6 +866,22 @@ fun AppHeader(
                             }
                         )
                     }
-                }
-            )
-        } }}
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Кнопка сброса к стандартным значениям
+                    Button(
+                        onClick = {
+                            onTemperatureChange(1.0)
+                            onMaxTokensChange(1000)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Сбросить параметры к стандартным")
+                    }
+                })}}}

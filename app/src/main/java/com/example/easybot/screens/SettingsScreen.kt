@@ -74,8 +74,8 @@ fun SettingsScreen(navController: NavController) {
             selectedModel = settings.model ?: ""
 
             // новые поля
-            temperature = settings.temperature ?: 0.7
-            maxTokens = settings.maxTokens ?: 1024
+            temperature = settings.temperature ?: 1.0
+            maxTokens = settings.maxTokens ?: 1000
 
             // запоминаем в сессии, чтобы чат видел актуальные значения
             UserSession.selectedModel = selectedModel
