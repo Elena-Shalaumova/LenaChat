@@ -102,7 +102,7 @@ fun ChatPage(
     var temperature by remember { mutableStateOf(UserSession.temperature ?: 0.7) }
     var maxTokens by remember { mutableStateOf(UserSession.maxTokens ?: 1024) }
     // ---------- ШАГ 2: та самая функция сохранения из чата ----------
-    fun saveSettingsFromChat(newModel: String) {
+    fun saveSettingsFromChat() {
         val id = userId ?: return
 
         coroutineScope.launch {
@@ -112,7 +112,9 @@ fun ChatPage(
                     request = SettingsRequest(
                         id = id,
                         stream = streamEnabled,
-                        model = newModel
+                        model = selectedModel,   // ← берём из стейта экрана
+                        temperature = temperature,
+                        maxTokens = maxTokens
                     )
                 )
 
@@ -141,6 +143,7 @@ fun ChatPage(
         }
     }
 
+
     // при входе в экран инициализируем чат + грузим модели/настройки
     LaunchedEffect(chatId) {
         viewModel.init(chatId)
@@ -161,21 +164,58 @@ fun ChatPage(
             val settings = api.getSettings(id)       // id: Int
 
             streamEnabled = settings.stream
-            selectedModel = settings.model.orEmpty()
 
-           // temperature = settings.temperature ?: 0.7
-           // maxTokens  = settings.maxTokens ?: 1024
+            // ----- читаем, что пришло с сервера -----
+            val serverModel = settings.model.orEmpty()
+            selectedModel = serverModel
+
+            temperature = settings.temperature ?: 0.7
+            maxTokens  = settings.maxTokens ?: 1024
 
             UserSession.selectedModel = selectedModel
             UserSession.temperature   = temperature
             UserSession.maxTokens     = maxTokens
 
+            // ----- ФОЛБЭК, если модель пустая или отсутствует в списке Ollama -----
+            val fallback = oLlamaModels.firstOrNull()
+
+            if ((selectedModel.isBlank() || (fallback != null && selectedModel !in oLlamaModels))
+                && fallback != null
+            ) {
+                // подставляем первую доступную модель
+                selectedModel = fallback
+                UserSession.selectedModel = fallback
+
+                // сразу сохраняем обратно в БД
+                try {
+                    api.saveSettings(
+                        request = SettingsRequest(
+                            id = id,
+                            stream = streamEnabled,
+                            model = fallback,
+                            temperature = temperature,
+                            maxTokens = maxTokens
+                        )
+                    )
+                } catch (saveEx: Exception) {
+                    saveEx.printStackTrace()
+                }
+            }
+
         } catch (e: retrofit2.HttpException) {
+            // 404 — настроек нет, создаём дефолтные
             if (e.code() == 404) {
                 val defaultModel = oLlamaModels.firstOrNull()
+
                 streamEnabled = false
                 selectedModel = defaultModel.orEmpty()
+
+                temperature = 0.7
+                maxTokens = 1024
+
                 UserSession.selectedModel = selectedModel
+                UserSession.temperature   = temperature
+                UserSession.maxTokens     = maxTokens
 
                 if (defaultModel != null) {
                     try {
@@ -183,7 +223,9 @@ fun ChatPage(
                             request = SettingsRequest(
                                 id = id,                       // id: Int
                                 stream = streamEnabled,
-                                model = selectedModel
+                                model = defaultModel,
+                                temperature = temperature,
+                                maxTokens = maxTokens
                             )
                         )
                     } catch (saveEx: Exception) {
@@ -270,7 +312,7 @@ fun ChatPage(
             onModelSelected = { model ->
                 selectedModel = model
                 UserSession.selectedModel = model
-                saveSettingsFromChat(model)
+                saveSettingsFromChat()
             },
 
             onTemperatureChange = { newTemp ->

@@ -1,53 +1,55 @@
 package com.example.easybot.screens
 
 import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
-import com.example.easybot.UserSession
 import com.example.easybot.SettingsRequest
+import com.example.easybot.UserSession
 import com.example.easybot.provideApi
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.LaunchedEffect
 import retrofit2.HttpException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(navController: NavController) {
     // Берём текущее значение из UserSession, чтобы при открытии экрана оно подставилось
-    var apiBaseUrl by remember { mutableStateOf(UserSession.apiBaseUrl)}
+    var apiBaseUrl by remember { mutableStateOf(UserSession.apiBaseUrl) }
     val userLogin = UserSession.login ?: "N/A"
+
     var streamEnabled by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var isClearingChats by remember { mutableStateOf(false) }
+
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val api = remember { provideApi(apiBaseUrl) }
     val userId = (UserSession.userId ?: 0L).toInt()
+
+    // выбранная модель
     var selectedModel by remember {
         mutableStateOf(UserSession.selectedModel ?: "")
     }
+
+    // 🔥 температура генерации
+    var temperature by remember {
+        mutableStateOf(UserSession.temperature ?: 0.7)
+    }
+
+    // 📏 максимальная длина ответа
+    var maxTokens by remember {
+        mutableStateOf(UserSession.maxTokens ?: 1024)
+    }
+
     var isModelDropdownExpanded by remember { mutableStateOf(false) }
     var ollamaVersion by remember { mutableStateOf<String?>(null) }
     var ollamaModels by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -71,6 +73,15 @@ fun SettingsScreen(navController: NavController) {
             streamEnabled = settings.stream
             selectedModel = settings.model ?: ""
 
+            // новые поля
+            temperature = settings.temperature ?: 0.7
+            maxTokens = settings.maxTokens ?: 1024
+
+            // запоминаем в сессии, чтобы чат видел актуальные значения
+            UserSession.selectedModel = selectedModel
+            UserSession.temperature = temperature
+            UserSession.maxTokens = maxTokens
+
         } catch (e: HttpException) {
             // 404 – настроек ещё нет, создаём дефолтные
             if (e.code() == 404) {
@@ -79,15 +90,22 @@ fun SettingsScreen(navController: NavController) {
                 streamEnabled = false
                 selectedModel = defaultModel.orEmpty()
 
+                // temperature / maxTokens уже имеют дефолты из remember
+
                 if (defaultModel != null) {
                     try {
                         api.saveSettings(
                             SettingsRequest(
                                 id = userId,
                                 stream = streamEnabled,
-                                model = selectedModel
+                                model = selectedModel,
+                                temperature = temperature,
+                                maxTokens = maxTokens
                             )
                         )
+                        UserSession.selectedModel = selectedModel
+                        UserSession.temperature = temperature
+                        UserSession.maxTokens = maxTokens
                     } catch (saveEx: Exception) {
                         saveEx.printStackTrace()
                     }
@@ -111,19 +129,21 @@ fun SettingsScreen(navController: NavController) {
 
             // обновляем UI
             selectedModel = fallback
+            UserSession.selectedModel = fallback
 
             // И ВАЖНО: сразу же сохраняем исправленную модель в БД
             try {
                 api.saveSettings(
                     SettingsRequest(
                         id = userId,
-                        stream = streamEnabled,   // текущее значение свитча
-                        model = fallback          // новая корректная модель
+                        stream = streamEnabled,
+                        model = fallback,
+                        temperature = temperature,
+                        maxTokens = maxTokens
                     )
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Toast.makeText(context, "Не удалось обновить настройки", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -161,12 +181,9 @@ fun SettingsScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                // 1. Увеличиваем отступ до ~3см
                 .padding(horizontal = 48.dp)
-                // Добавляем отступ снизу, чтобы кнопка не прилипала к краю
                 .padding(bottom = 64.dp),
             horizontalAlignment = Alignment.Start,
-            // 2. Смещаем весь контент вниз
             verticalArrangement = Arrangement.Bottom
         ) {
             Text(
@@ -177,7 +194,6 @@ fun SettingsScreen(navController: NavController) {
             )
 
             Spacer(modifier = Modifier.height(32.dp))
-
 
             Text(
                 text = "Версия Ollama: $ollamaVersion",
@@ -278,7 +294,7 @@ fun SettingsScreen(navController: NavController) {
                         .menuAnchor()
                         .fillMaxWidth()
                 )
-                //Меню выпадающего списка
+                // Меню выпадающего списка
                 ExposedDropdownMenu(
                     expanded = isModelDropdownExpanded,
                     onDismissRequest = { isModelDropdownExpanded = false }
@@ -294,36 +310,34 @@ fun SettingsScreen(navController: NavController) {
                         )
                     }
                 }
-
-
             }
 
-            Spacer(modifier = Modifier.height(32.dp)) // Увеличим отступ перед кнопками
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Оборачиваем кнопки в Row для горизонтального расположения
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp), // Пространство между кнопками
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-            }
-
+            // Кнопка "Очистить все чаты"
             Button(
                 onClick = {
-                    val userId = UserSession.userId?.toInt()
-                    if (userId == null) {
-                        Toast.makeText(context, "Пользователь не авторизован", Toast.LENGTH_SHORT).show()
+                    val uid = UserSession.userId?.toInt()
+                    if (uid == null) {
+                        Toast.makeText(
+                            context,
+                            "Пользователь не авторизован",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         return@Button
                     }
 
                     coroutineScope.launch {
                         isClearingChats = true
                         try {
-                            val chats = api.getChats(userId)
+                            val chats = api.getChats(uid)
 
                             if (chats.isEmpty()) {
-                                Toast.makeText(context, "У вас нет чатов для удаления", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "У вас нет чатов для удаления",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             } else {
                                 chats.forEach { chat ->
                                     val response = api.deleteChat(chat.id)
@@ -331,7 +345,11 @@ fun SettingsScreen(navController: NavController) {
                                         throw IllegalStateException("Не удалось очистить чат ${chat.id}")
                                     }
                                 }
-                                Toast.makeText(context, "Все чаты удалены", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "Все чаты удалены",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         } catch (e: Exception) {
                             Toast.makeText(
@@ -359,13 +377,16 @@ fun SettingsScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-
-            // Существующая кнопка "Сохранить"
+            // Кнопка "Сохранить" (общие настройки)
             Button(
                 onClick = {
-                    val userId = UserSession.userId?.toInt()
-                    if (userId == null) {
-                        Toast.makeText(context, "Пользователь не авторизован", Toast.LENGTH_SHORT).show()
+                    val uid = UserSession.userId?.toInt()
+                    if (uid == null) {
+                        Toast.makeText(
+                            context,
+                            "Пользователь не авторизован",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         return@Button
                     }
 
@@ -373,12 +394,31 @@ fun SettingsScreen(navController: NavController) {
                         isLoading = true
                         try {
                             val response = api.saveSettings(
-                                SettingsRequest(id = userId, stream = streamEnabled, model = selectedModel)
+                                SettingsRequest(
+                                    id = uid,
+                                    stream = streamEnabled,
+                                    model = selectedModel,
+                                    temperature = temperature,
+                                    maxTokens = maxTokens
+                                )
                             )
                             if (response.isSuccessful) {
-                                Toast.makeText(context, "Настройки сохранены", Toast.LENGTH_SHORT).show()
+                                // обновим сессию
+                                UserSession.selectedModel = selectedModel
+                                UserSession.temperature = temperature
+                                UserSession.maxTokens = maxTokens
+
+                                Toast.makeText(
+                                    context,
+                                    "Настройки сохранены",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             } else {
-                                Toast.makeText(context, "Не удалось сохранить настройки", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "Не удалось сохранить настройки",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         } catch (e: Exception) {
                             Toast.makeText(
@@ -405,4 +445,3 @@ fun SettingsScreen(navController: NavController) {
         }
     }
 }
-//}

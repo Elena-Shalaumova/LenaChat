@@ -13,7 +13,7 @@ import kotlin.collections.List
 import com.example.easybot.UserSession
 
 // --- DTO для настроек ---
-data class SettingsDto(val id: Int, val userId: Int, val stream: Boolean, val model: String?)
+data class SettingsDto(val id: Int, val userId: Int, val stream: Boolean, val model: String?, val temperature: Double?, val maxTokens: Int )
 data class SettingsRequest(val id: Int, val stream: Boolean, val model: String,val temperature: Double?,val maxTokens: Int? )
 data class OllamaVersionDto(val version: String)
 data class OllamaModels(val models: List<String>)
@@ -112,6 +112,8 @@ interface WebApiChatAI {
 
    // @POST("api/Chat/send-image")
    // suspend fun sendImageMessage(@Body request: SendImageMessageRequest): SendMessageResponse
+   //@GET("api/settings/{id}")
+   //suspend fun getSettings(@Path("id") id: Int): SettingsDto
 
 
 }
