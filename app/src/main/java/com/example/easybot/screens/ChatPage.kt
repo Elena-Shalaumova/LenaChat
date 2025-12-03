@@ -60,6 +60,8 @@ import com.example.easybot.SettingsRequest
 import com.example.easybot.UserSession
 import com.example.easybot.api
 import kotlinx.coroutines.delay
+import android.widget.Toast
+import kotlinx.coroutines.launch
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
     return try {
@@ -82,9 +84,11 @@ fun ChatPage(
 ) {
     val userId = UserSession.userId?.toInt()
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var isLoading by remember { mutableStateOf(false) }
     var streamEnabled by remember { mutableStateOf(false) }
+
     // выбранная модель на время сессии
     var selectedModel by remember {
         mutableStateOf(UserSession.selectedModel ?: "")
@@ -92,7 +96,48 @@ fun ChatPage(
 
     // список моделей с бэка
     var oLlamaModels by remember { mutableStateOf<List<String>>(emptyList()) }
-    // при входе в экран инициализируем чат
+
+    // ---------- ШАГ 2: та самая функция сохранения из чата ----------
+    fun saveSettingsFromChat(newModel: String) {
+        val id = userId ?: return
+
+        coroutineScope.launch {
+            isLoading = true
+            try {
+                val response = api.saveSettings(
+                    request = SettingsRequest(
+                        id = id,
+                        stream = streamEnabled,
+                        model = newModel
+                    )
+                )
+
+                if (response.isSuccessful) {
+                    Toast.makeText(
+                        context,
+                        "Настройки сохранены",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    Toast.makeText(
+                        context,
+                        "Не удалось сохранить настройки",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    "Ошибка: ${e.message ?: "неизвестная"}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    // при входе в экран инициализируем чат + грузим модели/настройки
     LaunchedEffect(chatId) {
         viewModel.init(chatId)
 
@@ -113,7 +158,7 @@ fun ChatPage(
 
             streamEnabled = settings.stream
             selectedModel = settings.model.orEmpty()
-            UserSession.selectedModel = settings.model
+            UserSession.selectedModel = selectedModel
 
         } catch (e: retrofit2.HttpException) {
             if (e.code() == 404) {
@@ -141,16 +186,16 @@ fun ChatPage(
         } catch (e: Exception) {
             e.printStackTrace()
         }
-
     }
 
     val messages by viewModel.messages.collectAsState()
-    val context = LocalContext.current
     val isAiBusy by viewModel.isAiBusy.collectAsState()
-
 
     // ---- прикрепленные картинки ----
     var pendingImagesBase64 by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    // дальше твои лаунчеры, MessageInput, список сообщений и т.д.
+    // Я оставляю всё, как у тебя было, только AppHeader меняем ниже
 
     // ---------- ЛАУНЧЕР ОДНОЙ КАРТИНКИ ----------
     val imagePickerLauncher =
@@ -163,7 +208,6 @@ fun ChatPage(
                         ?: return@rememberLauncherForActivityResult
 
                     val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-
                     pendingImagesBase64 = listOf(base64)
 
                 } catch (e: Exception) {
@@ -189,10 +233,9 @@ fun ChatPage(
             if (uris.isNullOrEmpty()) return@rememberLauncherForActivityResult
 
             val imagesBase64 = uris.mapNotNull { uri ->
-                uriToBase64(context, uri)   // helper — см. ниже
+                uriToBase64(context, uri)
             }
 
-            // ДОБАВЛЯЕМ к уже прикреплённым
             pendingImagesBase64 = pendingImagesBase64 + imagesBase64
         }
 
@@ -204,13 +247,20 @@ fun ChatPage(
             }
         }
 
-    
-
     Column(modifier = modifier.fillMaxSize()) {
 
-
-        AppHeader(title = chatTitle, onClear = { viewModel.clearCurrentChat() })
-
+        // 🔼 ТУТ НОВЫЙ ВЫЗОВ AppHeader С ВЫБОРОМ МОДЕЛИ 🔼
+        AppHeader(
+            title = chatTitle,
+            models = oLlamaModels,
+            selectedModel = selectedModel,
+            onModelSelected = { model ->
+                selectedModel = model
+                UserSession.selectedModel = model
+                saveSettingsFromChat(model)   // сохраняем как на SettingsPage
+            },
+            onClear = { viewModel.clearCurrentChat() }
+        )
 
         Box(modifier = Modifier.weight(1f)) {
             if (messages.isEmpty()) {
@@ -250,20 +300,12 @@ fun ChatPage(
 
                 pendingImagesBase64 = emptyList()
             },
-
-            // выбрать одно изображение
-            onPickImage = {
-                imagePickerLauncher.launch("image/*")
-            },
-
-            // выбрать несколько изображений
+            onPickImage = { imagePickerLauncher.launch("image/*") },
             onPickMultipleImages = {
                 multiplePhotoPickerLauncher.launch(
                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                 )
             },
-
-            // камера
             onCaptureImage = {
                 val hasPermission = ContextCompat.checkSelfPermission(
                     context,
@@ -273,12 +315,11 @@ fun ChatPage(
                 if (hasPermission) cameraLauncher.launch(null)
                 else permissionLauncher.launch(Manifest.permission.CAMERA)
             },
-
-            // удалить прикрепленные
             onClearAttachment = { pendingImagesBase64 = emptyList() }
         )
     }
 }
+
 
 @Composable
 fun EmptyChatScreen(modifier: Modifier = Modifier) {
@@ -602,25 +643,47 @@ private fun bitmapToBase64(bitmap: Bitmap): String {
 }
 
 @Composable
-fun AppHeader(title: String, onClear: () -> Unit = {}) {
-    Row(
+fun AppHeader(
+    title: String,
+    models: List<String>,
+    selectedModel: String,
+    onModelSelected: (String) -> Unit,
+    onClear: () -> Unit = {}
+) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primary)
-            .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp)
     ) {
-        Text(
-            text = title,
-            color = Color.White,
-            fontSize = 22.sp,
-            modifier = Modifier.weight(1f)
-        )
-        TextButton(onClick = onClear) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                text = "Очистить",
+                text = title,
                 color = Color.White,
-                fontSize = 16.sp
+                fontSize = 22.sp,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onClear) {
+                Text(
+                    text = "Очистить",
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
+            }
+        }
+
+        if (models.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+
+            // твой общий селектор моделей
+            ModelSelector(
+                models = models,
+                selectedModel = selectedModel,
+                onModelSelected = onModelSelected,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
