@@ -28,6 +28,8 @@ fun MyAppNavigation(navController: NavHostController) {
             SettingsScreen(navController = navController)
         }
 
+        composable(Routes.Help) { HelpScreen(navController) }
+
 //        composable(Routes.AdminPanel) {
 //            AdminPanelScreen(navController = navController)
 //        }

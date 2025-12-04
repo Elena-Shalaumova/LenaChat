@@ -8,4 +8,6 @@ object Routes {
     const val Chat = "chat/{chatId}/{chatTitle}" 
     const val Settings = "settings"
     const val AdminPanel = "admin_panel"
+
+    const val Help = "help"
 }

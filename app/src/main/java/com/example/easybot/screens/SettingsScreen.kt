@@ -18,6 +18,7 @@ import com.example.easybot.UserSession
 import com.example.easybot.provideApi
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import com.example.easybot.navigation.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -269,6 +270,11 @@ fun SettingsScreen(navController: NavController) {
                 Text("Сохранить")
             }
 
+
+
+
+
+
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
@@ -441,6 +447,18 @@ fun SettingsScreen(navController: NavController) {
                 )
             ) {
                 Text(if (isLoading) "Сохранение..." else "Сохранить")
+            }
+            TextButton(
+                onClick = { navController.navigate(Routes.Help) },
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 4.dp, bottom = 24.dp)
+            ) {
+                Text(
+                    text = "О приложении",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }
