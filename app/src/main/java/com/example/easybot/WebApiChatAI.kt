@@ -19,7 +19,7 @@ data class OllamaVersionDto(val version: String)
 data class OllamaModels(val models: List<String>)
 
 // --- DTO для чатов и сообщений ---
-data class ChatDto(val id: Int, val title: String)
+data class ChatDto(val id: Int, val title: String, val model: String? = null )
 data class MessageDto(val id: Int,
                       val chatId: Int,
                       val role: Int,

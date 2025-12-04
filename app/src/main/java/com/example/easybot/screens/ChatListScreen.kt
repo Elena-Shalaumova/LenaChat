@@ -76,7 +76,7 @@ fun ChatListScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { 
+                onClick = {
                     // Добавляем индекс к названию нового чата
                     val nextChatNumber = chats.size + 1
 
@@ -131,7 +131,7 @@ fun ChatListScreen(
 
 @Composable
 private fun ChatRow(
-    chat: ChatDto, // <-- Теперь принимаем ChatDto
+    chat: ChatDto,
     onOpen: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -142,25 +142,55 @@ private fun ChatRow(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            Text(
-                text = chat.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Удалить чат",
-                    tint = Color.White
+            // Верхняя строка: "Чат N" + корзина
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = chat.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    modifier = Modifier.weight(1f)
                 )
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Удалить чат",
+                        tint = Color.White
+                    )
+                }
             }
+
+            // Нижняя строка: модель
+            Spacer(modifier = Modifier.height(4.dp))
+
+            val modelText = chat.model
+                ?.takeIf { it.isNotBlank() }
+                ?: "Модель не выбрана"
+
+            Text(
+                text = modelText,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFFCCE2FF)
+            )
+//            // 3. Строка с датой последнего сообщения
+//            Spacer(modifier = Modifier.height(2.dp))
+//
+//            val dateText = chat.lastMessageAt
+//                ?.replace('T', ' ')        // "2025-11-25 08:57:36"
+//                ?: "Нет сообщений"
+//
+//            Text(
+//                text = dateText,
+//                style = MaterialTheme.typography.bodySmall,
+//                color = Color(0xFFCCE2FF)
+
         }
     }
 }
