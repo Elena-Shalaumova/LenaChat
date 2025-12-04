@@ -19,6 +19,8 @@ import com.example.easybot.provideApi
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import com.example.easybot.navigation.Routes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +57,9 @@ fun SettingsScreen(navController: NavController) {
     var ollamaVersion by remember { mutableStateOf<String?>(null) }
     var ollamaModels by remember { mutableStateOf<List<String>>(emptyList()) }
     var availableModels by remember { mutableStateOf<List<String>>(emptyList()) }
+    var ollamaError by remember { mutableStateOf<String?>(null) }
+
+
 
     LaunchedEffect(userId) {
 
@@ -155,6 +160,20 @@ fun SettingsScreen(navController: NavController) {
         } catch (e: Exception) {
             e.printStackTrace()
             ollamaVersion = "неизвестна"
+
+            ollamaError = when (e) {
+                is java.net.ConnectException ->
+                    "❌ Ollama недоступна — сервер не отвечает"
+
+                is java.net.SocketTimeoutException ->
+                    "⏱️ Ollama не успевает отвечать"
+
+                is retrofit2.HttpException ->
+                    "❌ Ошибка Ollama (код ${e.code()})"
+
+                else ->
+                    "⚠️ Не удалось подключиться к Ollama"
+            }
         }
     }
 
@@ -201,6 +220,21 @@ fun SettingsScreen(navController: NavController) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray
             )
+            if (ollamaError != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp)
+                        .background(Color(0xFFFFCDD2), RoundedCornerShape(8.dp))
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = ollamaError ?: "",
+                        color = Color(0xFFB00020),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
