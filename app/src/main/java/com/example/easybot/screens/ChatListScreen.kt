@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -28,6 +29,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+
 @Composable
 fun ChatListScreen(
     navController: NavHostController,
@@ -35,6 +40,15 @@ fun ChatListScreen(
 ) {
     val chats by viewModel.chats.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    // диалог создания
+    var isCreateDialogOpen by remember { mutableStateOf(false) }
+    var newChatTitle by remember { mutableStateOf("") }
+
+    // диалог переименования
+    var isRenameDialogOpen by remember { mutableStateOf(false) }
+    var renameChatTitle by remember { mutableStateOf("") }
+    var renameChatId by remember { mutableStateOf<Int?>(null) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -49,6 +63,7 @@ fun ChatListScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
+
     Scaffold(
         containerColor = Color(0xFFE8F5FE),
         topBar = {
@@ -77,10 +92,8 @@ fun ChatListScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    // Добавляем индекс к названию нового чата
-                    val nextChatNumber = chats.size + 1
-
-                    viewModel.createChat("Чат $nextChatNumber")
+                    newChatTitle = ""
+                    isCreateDialogOpen = true
                 },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
@@ -93,6 +106,86 @@ fun ChatListScreen(
             }
         }
     ) { paddingValues ->
+
+        // ---- Диалог "Новый чат" ----
+        if (isCreateDialogOpen) {
+            AlertDialog(
+                onDismissRequest = { isCreateDialogOpen = false },
+                title = { Text("Новый чат") },
+                text = {
+                    Column {
+                        Text("Укажите название чата")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = newChatTitle,
+                            onValueChange = { newChatTitle = it },
+                            label = { Text("Название чата") },
+                            singleLine = true
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val title = newChatTitle.trim()
+                            if (title.isNotEmpty()) {
+                                viewModel.createChat(title)
+                                isCreateDialogOpen = false
+                            }
+                        },
+                        enabled = newChatTitle.isNotBlank()
+                    ) {
+                        Text("Создать")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { isCreateDialogOpen = false }) {
+                        Text("Отмена")
+                    }
+                }
+            )
+        }
+
+        // ---- Диалог "Переименовать чат" ----
+        if (isRenameDialogOpen && renameChatId != null) {
+            AlertDialog(
+                onDismissRequest = { isRenameDialogOpen = false },
+                title = { Text("Переименовать чат") },
+                text = {
+                    Column {
+                        Text("Новое название чата")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = renameChatTitle,
+                            onValueChange = { renameChatTitle = it },
+                            label = { Text("Название чата") },
+                            singleLine = true
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val title = renameChatTitle.trim()
+                            val id = renameChatId
+                            if (id != null && title.isNotEmpty()) {
+                                viewModel.renameChat(id, title)
+                                isRenameDialogOpen = false
+                            }
+                        },
+                        enabled = renameChatTitle.isNotBlank()
+                    ) {
+                        Text("Сохранить")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { isRenameDialogOpen = false }) {
+                        Text("Отмена")
+                    }
+                }
+            )
+        }
+
         if (chats.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -117,9 +210,16 @@ fun ChatListScreen(
                     ChatRow(
                         chat = chat,
                         onOpen = {
-                            // Кодируем заголовок, чтобы безопасно передать его в пути
-                            val encodedTitle = URLEncoder.encode(chat.title, StandardCharsets.UTF_8.toString())
+                            val encodedTitle = URLEncoder.encode(
+                                chat.title,
+                                StandardCharsets.UTF_8.toString()
+                            )
                             navController.navigate("chat/${chat.id}/${encodedTitle}")
+                        },
+                        onRename = {
+                            renameChatId = chat.id
+                            renameChatTitle = chat.title
+                            isRenameDialogOpen = true
                         },
                         onDelete = { viewModel.deleteChat(chat.id) }
                     )
@@ -133,6 +233,7 @@ fun ChatListScreen(
 private fun ChatRow(
     chat: ChatDto,
     onOpen: () -> Unit,
+    onRename: () -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
@@ -147,7 +248,7 @@ private fun ChatRow(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            // Верхняя строка: "Чат N" + корзина
+            // Верхняя строка: "Чат N" + иконки
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -158,6 +259,13 @@ private fun ChatRow(
                     color = Color.White,
                     modifier = Modifier.weight(1f)
                 )
+                IconButton(onClick = onRename) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Переименовать чат",
+                        tint = Color.White
+                    )
+                }
                 IconButton(onClick = onDelete) {
                     Icon(
                         imageVector = Icons.Default.Delete,
@@ -179,18 +287,6 @@ private fun ChatRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFFCCE2FF)
             )
-//            // 3. Строка с датой последнего сообщения
-//            Spacer(modifier = Modifier.height(2.dp))
-//
-//            val dateText = chat.lastMessageAt
-//                ?.replace('T', ' ')        // "2025-11-25 08:57:36"
-//                ?: "Нет сообщений"
-//
-//            Text(
-//                text = dateText,
-//                style = MaterialTheme.typography.bodySmall,
-//                color = Color(0xFFCCE2FF)
-
         }
     }
 }

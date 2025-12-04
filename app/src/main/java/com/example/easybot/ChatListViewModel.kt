@@ -51,4 +51,16 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
             }
         }
     }
+
+    fun renameChat(id: Int, newTitle: String) {
+        viewModelScope.launch {
+            try {
+                api.renameChat(id, RenameChatRequest(newTitle))
+                loadChats()
+            } catch (e: Exception) {
+                // обработка ошибки, тост и т.п.
+            }
+        }
+    }
+
 }

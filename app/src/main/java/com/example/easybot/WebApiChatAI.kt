@@ -71,7 +71,8 @@ data class SendImageMessageRequest(
     val prompt: String?,      // объект text для картинки
     val base64Image: String   // обязательный base64
 )
-
+//переименовка чата
+data class RenameChatRequest(val title: String)
 
 interface WebApiChatAI {
 
@@ -104,6 +105,13 @@ interface WebApiChatAI {
 
     @POST("api/Chat/{chatId}/clear")
     suspend fun clearChat(@Path("chatId") chatId: Int): Response<Unit>
+
+    // 🔹 Переименовать чат
+    @PUT("api/Chat/{chatId}/rename")
+    suspend fun renameChat(
+        @Path("chatId") chatId: Int,
+        @Body request: RenameChatRequest
+    ): Response<Unit>
 
     // --- Сообщения ---
     @GET("api/Chat/{chatId}/messages")
