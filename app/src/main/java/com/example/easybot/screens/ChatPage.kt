@@ -64,6 +64,9 @@ import android.widget.Toast
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.text.input.KeyboardType
+import com.example.easybot.ChatSettingsRequest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
@@ -102,6 +105,18 @@ fun ChatPage(
 
     var temperature by remember { mutableStateOf(UserSession.temperature ?: 0.7) }
     var maxTokens by remember { mutableStateOf(UserSession.maxTokens ?: 1024) }
+
+    fun saveCurrentChatSettings() {
+        saveChatSettingsFromChat(
+            chatId = chatId,
+            selectedModel = selectedModel,
+            temperature = temperature,
+            maxTokens = maxTokens,
+            context = context,
+            coroutineScope = coroutineScope
+        )
+    }
+
     // ---------- ШАГ 2: та самая функция сохранения из чата ----------
     fun saveSettingsFromChat() {
         val id = userId ?: return
@@ -109,11 +124,10 @@ fun ChatPage(
         coroutineScope.launch {
             isLoading = true
             try {
-                val response = api.saveSettings(
-                    request = SettingsRequest(
-                        id = id,
-                        stream = streamEnabled,
-                        model = selectedModel,   // ← берём из стейта экрана
+                val response = api.saveChatSettings(
+                    ChatSettingsRequest(
+                        chatId = chatId.toInt(),
+                        model = selectedModel,
                         temperature = temperature,
                         maxTokens = maxTokens
                     )
@@ -122,13 +136,13 @@ fun ChatPage(
                 if (response.isSuccessful) {
                     Toast.makeText(
                         context,
-                        "Настройки сохранены",
+                        "Настройки чата сохранены",
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {
                     Toast.makeText(
                         context,
-                        "Не удалось сохранить настройки",
+                        "Не удалось сохранить настройки чата",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -160,78 +174,43 @@ fun ChatPage(
             oLlamaModels = emptyList()
         }
 
-        // 2. Настройки (как в SettingsScreen)
+        // 2. Настройки КОНКРЕТНОГО чата
         try {
-            val settings = api.getSettings(id)       // id: Int
+            val chatSettings = api.getChatSettings(chatId.toInt())
 
-            streamEnabled = settings.stream
-
-            // ----- читаем, что пришло с сервера -----
-            val serverModel = settings.model.orEmpty()
-            selectedModel = serverModel
-
-            temperature = settings.temperature ?: 1.0
-            maxTokens  = settings.maxTokens ?: 1000
+            selectedModel = chatSettings.model
+            temperature   = chatSettings.temperature ?: 0.7
+            maxTokens     = chatSettings.maxTokens ?: 1024
 
             UserSession.selectedModel = selectedModel
             UserSession.temperature   = temperature
             UserSession.maxTokens     = maxTokens
 
-            // ----- ФОЛБЭК, если модель пустая или отсутствует в списке Ollama -----
-            val fallback = oLlamaModels.firstOrNull()
+        } catch (e: retrofit2.HttpException) {
+            if (e.code() == 404) {
+                // записей в settings_chat ещё нет — берём глобальные
+                val userSettings = api.getSettings(id)
 
-            if ((selectedModel.isBlank() || (fallback != null && selectedModel !in oLlamaModels))
-                && fallback != null
-            ) {
-                // подставляем первую доступную модель
-                selectedModel = fallback
-                UserSession.selectedModel = fallback
+                selectedModel = userSettings.model ?: oLlamaModels.firstOrNull().orEmpty()
+                temperature   = userSettings.temperature ?: 0.7
+                maxTokens     = userSettings.maxTokens ?: 1024
 
-                // сразу сохраняем обратно в БД
+                UserSession.selectedModel = selectedModel
+                UserSession.temperature   = temperature
+                UserSession.maxTokens     = maxTokens
+
+                // сразу создаём запись в settings_chat
                 try {
-                    api.saveSettings(
-                        request = SettingsRequest(
-                            id = id,
-                            stream = streamEnabled,
-                            model = fallback,
+                    api.saveChatSettings(
+                        ChatSettingsRequest(
+                            chatId = chatId.toInt(),
+                            model = selectedModel,
                             temperature = temperature,
                             maxTokens = maxTokens
                         )
                     )
                 } catch (saveEx: Exception) {
                     saveEx.printStackTrace()
-                }
-            }
-
-        } catch (e: retrofit2.HttpException) {
-            // 404 — настроек нет, создаём дефолтные
-            if (e.code() == 404) {
-                val defaultModel = oLlamaModels.firstOrNull()
-
-                streamEnabled = false
-                selectedModel = defaultModel.orEmpty()
-
-                temperature = 1.0
-                maxTokens = 1000
-
-                UserSession.selectedModel = selectedModel
-                UserSession.temperature   = temperature
-                UserSession.maxTokens     = maxTokens
-
-                if (defaultModel != null) {
-                    try {
-                        api.saveSettings(
-                            request = SettingsRequest(
-                                id = id,                       // id: Int
-                                stream = streamEnabled,
-                                model = defaultModel,
-                                temperature = temperature,
-                                maxTokens = maxTokens
-                            )
-                        )
-                    } catch (saveEx: Exception) {
-                        saveEx.printStackTrace()
-                    }
                 }
             } else {
                 e.printStackTrace()
@@ -313,20 +292,24 @@ fun ChatPage(
             onModelSelected = { model ->
                 selectedModel = model
                 UserSession.selectedModel = model
-                saveSettingsFromChat()
+                // сохраняем настройки ЧАТА
+                saveCurrentChatSettings()
             },
 
             onTemperatureChange = { newTemp ->
                 temperature = newTemp
                 UserSession.temperature = newTemp
+                saveCurrentChatSettings()
             },
 
             onMaxTokensChange = { tokens ->
                 maxTokens = tokens
                 UserSession.maxTokens = tokens
+                saveCurrentChatSettings()
             },
 
-            onClear = { viewModel.clearCurrentChat() }
+            onClear = { viewModel.clearCurrentChat() },
+            onSaveSettings = { saveSettingsFromChat() } // из слайдеров/поля ввода
         )
 
         Box(modifier = Modifier.weight(1f)) {
@@ -709,6 +692,44 @@ private fun bitmapToBase64(bitmap: Bitmap): String {
     return Base64.encodeToString(bytes, Base64.NO_WRAP)
 }
 
+private fun saveChatSettingsFromChat(
+    chatId: Long,
+    selectedModel: String,
+    temperature: Double,
+    maxTokens: Int,
+    context: Context,
+    coroutineScope: CoroutineScope
+) {
+    if (selectedModel.isBlank()) return   // пустую модель не шлём
+
+    coroutineScope.launch {
+        try {
+            val response = api.saveChatSettings(
+                request = ChatSettingsRequest(
+                    chatId = chatId.toInt(),
+                    model = selectedModel,
+                    temperature = temperature,
+                    maxTokens = maxTokens
+                )
+            )
+
+            if (!response.isSuccessful) {
+                Toast.makeText(
+                    context,
+                    "Не удалось сохранить настройки чата",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(
+                context,
+                "Ошибка: ${e.message ?: "неизвестная"}",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+}
+
 @Composable
 fun AppHeader(
     title: String,
@@ -719,7 +740,8 @@ fun AppHeader(
     onModelSelected: (String) -> Unit,
     onTemperatureChange: (Double) -> Unit,
     onMaxTokensChange: (Int) -> Unit,
-    onClear: () -> Unit = {}
+    onClear: () -> Unit = {},
+    onSaveSettings: () -> Unit = {}      // 👈 добавили новый колбэк
 ) {
     Column(
         modifier = Modifier
@@ -763,7 +785,7 @@ fun AppHeader(
                     var showTempInfo by remember { mutableStateOf(false) }
                     var showTokensInfo by remember { mutableStateOf(false) }
 
-                    // ===== ТЕМПЕРАТУРА + ? =====
+                    // --- Заголовок температуры ---
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "Температура: ${"%.2f".format(temperature)}",
@@ -778,10 +800,15 @@ fun AppHeader(
                         }
                     }
 
+                    // --- Slider температуры ---
                     Slider(
                         value = temperature.toFloat(),
                         onValueChange = { value ->
                             onTemperatureChange(value.toDouble())
+                        },
+                        onValueChangeFinished = {
+                            // палец отпустили → сохраняем настройки чата
+                            onSaveSettings()
                         },
                         valueRange = 0f..2f
                     )
@@ -803,6 +830,7 @@ fun AppHeader(
                         }
                     }
 
+                    // текст в поле синхронизируем с maxTokens
                     var tokensText by remember(maxTokens) {
                         mutableStateOf(maxTokens.toString())
                     }
@@ -816,14 +844,19 @@ fun AppHeader(
                             if (digits.isNotEmpty()) {
                                 val valueInt = digits.toInt().coerceIn(64, 4096)
                                 onMaxTokensChange(valueInt)
+                                onSaveSettings()              // сохраняем при изменении
                             }
                         },
                         singleLine = true,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 4.dp, bottom = 8.dp),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        label = { Text("Например: 512, 1024, 2048") }
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number
+                        ),
+                        label = {
+                            Text(text = "Например: 512, 1024, 2048")
+                        }
                     )
 
                     Spacer(Modifier.height(8.dp))
@@ -847,7 +880,7 @@ fun AppHeader(
                         )
                     }
 
-                    // ===== Диалог для максимальной длины =====
+                    // ===== Диалог для maxTokens =====
                     if (showTokensInfo) {
                         AlertDialog(
                             onDismissRequest = { showTokensInfo = false },
@@ -869,11 +902,12 @@ fun AppHeader(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Кнопка сброса к стандартным значениям
+                    // ===== Кнопка сброса к стандартным значениям =====
                     Button(
                         onClick = {
                             onTemperatureChange(1.0)
                             onMaxTokensChange(1000)
+                            onSaveSettings()       // 👈 тоже сохраняем
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
@@ -882,6 +916,6 @@ fun AppHeader(
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Сбросить параметры к стандартным")
+                        Text(text = "Сбросить параметры к стандартным")
                     }
                 })}}}

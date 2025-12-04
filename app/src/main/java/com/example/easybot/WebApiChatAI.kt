@@ -13,7 +13,7 @@ import kotlin.collections.List
 import com.example.easybot.UserSession
 
 // --- DTO для настроек ---
-data class SettingsDto(val id: Int, val userId: Int, val stream: Boolean, val model: String?, val temperature: Double?, val maxTokens: Int )
+data class SettingsDto(val id: Int, val userId: Int, val stream: Boolean, val model: String?, val temperature: Double?, val maxTokens: Int? )
 data class SettingsRequest(val id: Int, val stream: Boolean, val model: String,val temperature: Double?,val maxTokens: Int? )
 data class OllamaVersionDto(val version: String)
 data class OllamaModels(val models: List<String>)
@@ -28,6 +28,20 @@ data class MessageDto(val id: Int,
                       val images: List<String>,
                       val createdAt: String? )
 
+data class ChatSettingsDto(
+    val id: Int,            // id записи в settings_chat (можно не использовать)
+    val chatId: Int,
+    val model: String,
+    val temperature: Double?,
+    val maxTokens: Int?
+)
+
+data class ChatSettingsRequest(
+    val chatId: Int,
+    val model: String,
+    val temperature: Double?,
+    val maxTokens: Int?
+)
 
 // --- DTO для запросов ---
 data class CreateChatRequest(val title: String, val userId: Int)
@@ -109,6 +123,16 @@ interface WebApiChatAI {
     // --- Ollama (если используется через сервер) ---
     @POST("api/Ai/chat")
     suspend fun chat(@Body request: ChatRequest): ChatResponse
+
+    @GET("/api/Chat/getChatSettings/{chatId}")
+    suspend fun getChatSettings(
+        @Path("chatId") chatId: Int
+    ): ChatSettingsDto
+
+    @POST("/api/Chat/chat/saveChatSettings")
+    suspend fun saveChatSettings(
+        @Body request: ChatSettingsRequest
+    ): Response<ChatSettingsDto>
 
    // @POST("api/Chat/send-image")
    // suspend fun sendImageMessage(@Body request: SendImageMessageRequest): SendMessageResponse
