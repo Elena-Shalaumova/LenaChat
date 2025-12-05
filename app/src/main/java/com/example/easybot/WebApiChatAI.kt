@@ -142,10 +142,11 @@ interface WebApiChatAI {
         @Body request: ChatSettingsRequest
     ): Response<ChatSettingsDto>
 
-   // @POST("api/Chat/send-image")
-   // suspend fun sendImageMessage(@Body request: SendImageMessageRequest): SendMessageResponse
-   //@GET("api/settings/{id}")
-   //suspend fun getSettings(@Path("id") id: Int): SettingsDto
+
+   @GET("api/WebAPIChatAI/user/{userId}/last-messages")
+   suspend fun getLastMessagesForUser(
+       @Path("userId") userId: Int
+   ): List<LastMessageDto>
 
 
 }
