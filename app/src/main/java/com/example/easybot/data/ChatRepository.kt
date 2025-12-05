@@ -30,6 +30,16 @@ class ChatRepository(
         api.clearChat(chatId)
     }
 
+    // 🔹 NEW: настройки конкретного чата (из settings_chat)
+    suspend fun getChatSettings(chatId: Int): ChatSettingsDto {
+        return api.getChatSettings(chatId)
+    }
+
+    // 🔹 NEW: последние сообщения по всем чатам пользователя
+    suspend fun getLastMessagesForUser(): List<LastMessageDto> {
+        return api.getLastMessagesForUser(getUserId())
+    }
+
     // ---- Сообщения ----
     suspend fun getMessages(chatId: Int): List<MessageModel> {
         val dtos = api.getMessages(chatId)

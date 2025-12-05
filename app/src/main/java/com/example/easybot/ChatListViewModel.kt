@@ -12,8 +12,9 @@ import kotlinx.coroutines.launch
 class ChatListViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ChatRepository()
 
-    private val _chats = MutableStateFlow<List<ChatDto>>(emptyList())
-    val chats: StateFlow<List<ChatDto>> = _chats.asStateFlow()
+    // 🔹 Тут теперь лежит не ChatDto, а уже собранный ChatListItem
+    private val _chats = MutableStateFlow<List<ChatListItem>>(emptyList())
+    val chats: StateFlow<List<ChatListItem>> = _chats.asStateFlow()
 
     init {
         loadChats()
@@ -22,10 +23,30 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
     fun loadChats() {
         viewModelScope.launch {
             try {
-                _chats.value = repository.getChats()
+                // 1) все чаты пользователя
+                val chats = repository.getChats()
+
+                // 2) последние сообщения по всем чатам пользователя
+                val lastMessages = repository.getLastMessagesForUser()
+
+                // 3) собираем всё в ChatListItem
+                val items = chats.map { chat ->
+                    val settings = repository.getChatSettings(chat.id)
+                    val last = lastMessages.firstOrNull { it.chatId == chat.id }
+
+                    ChatListItem(
+                        chatId = chat.id,
+                        title = chat.title,
+                        modelName = settings.model,
+                        lastMessageText = last?.text ?: "Нет сообщений",
+                        lastMessageTime = last?.createdAt
+                    )
+                }
+
+                _chats.value = items
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Тут можно обработать ошибку, например, показать Toast
+                // Тут можно обработать ошибку, например, показать Toast/состояние ошибки
             }
         }
     }
@@ -59,8 +80,8 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
                 loadChats()
             } catch (e: Exception) {
                 // обработка ошибки, тост и т.п.
+                e.printStackTrace()
             }
         }
     }
-
 }

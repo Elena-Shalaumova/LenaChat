@@ -32,6 +32,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.style.TextOverflow
+import com.example.easybot.ChatListItem
+
 
 @Composable
 fun ChatListScreen(
@@ -206,7 +209,7 @@ fun ChatListScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(chats, key = { it.id }) { chat ->
+                items(items = chats, key = { it.chatId }) { chat ->
                     ChatRow(
                         chat = chat,
                         onOpen = {
@@ -214,24 +217,26 @@ fun ChatListScreen(
                                 chat.title,
                                 StandardCharsets.UTF_8.toString()
                             )
-                            navController.navigate("chat/${chat.id}/${encodedTitle}")
+                            navController.navigate("chat/${chat.chatId}/$encodedTitle")
                         },
                         onRename = {
-                            renameChatId = chat.id
+                            renameChatId = chat.chatId
                             renameChatTitle = chat.title
                             isRenameDialogOpen = true
                         },
-                        onDelete = { viewModel.deleteChat(chat.id) }
+                        onDelete = {
+                            viewModel.deleteChat(chat.chatId)
+                        }
                     )
                 }
             }
-        }
+            }
     }
 }
 
 @Composable
 private fun ChatRow(
-    chat: ChatDto,
+    chat: ChatListItem,
     onOpen: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit
@@ -248,7 +253,7 @@ private fun ChatRow(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            // Верхняя строка: "Чат N" + иконки
+            // Верхняя строка: название чата + иконки
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -257,8 +262,19 @@ private fun ChatRow(
                     text = chat.title,
                     style = MaterialTheme.typography.titleMedium,
                     color = Color.White,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+
+                // время последнего сообщения
+                chat.lastMessageTime?.let { time ->
+                    Text(
+                        text = time,        // потом сделаем красиво "13:45 / Вчера"
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFCCE2FF)
+                    )
+                }
                 IconButton(onClick = onRename) {
                     Icon(
                         imageVector = Icons.Default.Edit,
@@ -275,10 +291,23 @@ private fun ChatRow(
                 }
             }
 
-            // Нижняя строка: модель
             Spacer(modifier = Modifier.height(4.dp))
 
-            val modelText = chat.model
+            // 🔹 Новое: последнее сообщение
+            if (chat.lastMessageText.isNotBlank()) {
+                Text(
+                    text = chat.lastMessageText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+
+            // Нижняя строка: модель
+            val modelText = chat.modelName
                 ?.takeIf { it.isNotBlank() }
                 ?: "Модель не выбрана"
 
