@@ -54,7 +54,7 @@ data class SendMessageRequest(
 )
 
 // --- DTO для ответов ---
-data class SendMessageResponse(val userMessage: MessageDto,
+data class SendMessageResponse(val userMessage: MessageDto?,
                                val aiMessage: MessageDto)
 
 // --- DTO для авторизации ---

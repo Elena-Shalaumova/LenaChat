@@ -10,30 +10,25 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.example.easybot.ChatDto
+import com.example.easybot.ChatListItem
 import com.example.easybot.ChatListViewModel
 import com.example.easybot.navigation.Routes
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import androidx.compose.runtime.DisposableEffect
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.text.style.TextOverflow
-import com.example.easybot.ChatListItem
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 
 @Composable
 fun ChatListScreen(
@@ -42,11 +37,11 @@ fun ChatListScreen(
 ) {
     val chats by viewModel.chats.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val coroutineScope = rememberCoroutineScope()
 
     // диалог создания
     var isCreateDialogOpen by remember { mutableStateOf(false) }
     var newChatTitle by remember { mutableStateOf("") }
-    // ⚡ флаг "инкогнито чат"
     var isIncognito by remember { mutableStateOf(false) }
 
     // диалог переименования
@@ -54,6 +49,7 @@ fun ChatListScreen(
     var renameChatTitle by remember { mutableStateOf("") }
     var renameChatId by remember { mutableStateOf<Int?>(null) }
 
+    // перезагрузка чатов при возврате на экран
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -121,6 +117,7 @@ fun ChatListScreen(
                     Column {
                         Text("Укажите название чата")
                         Spacer(modifier = Modifier.height(8.dp))
+
                         OutlinedTextField(
                             value = newChatTitle,
                             onValueChange = { newChatTitle = it },
@@ -130,15 +127,8 @@ fun ChatListScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // 🔹 переключатель "Инкогнито чат"
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Инкогнито чат",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f)
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Инкогнито чат", modifier = Modifier.weight(1f))
                             Switch(
                                 checked = isIncognito,
                                 onCheckedChange = { isIncognito = it }
@@ -151,9 +141,25 @@ fun ChatListScreen(
                         onClick = {
                             val title = newChatTitle.trim()
                             if (title.isNotEmpty()) {
-                                // передаём флаг инкогнито во ViewModel
-                                viewModel.createChat(title, isIncognito = isIncognito)
-                                isCreateDialogOpen = false
+                                coroutineScope.launch {
+                                    // suspend-функция из VM
+                                    val createdChat = viewModel.createChat(
+                                        title = title,
+                                        isIncognito = isIncognito
+                                    )
+
+                                    isCreateDialogOpen = false
+
+                                    val encodedTitle = URLEncoder.encode(
+                                        createdChat.title,
+                                        StandardCharsets.UTF_8.toString()
+                                    )
+                                    val flag = if (createdChat.isIncognito) 1 else 0
+
+                                    navController.navigate(
+                                        "chat/${createdChat.chatId}/$encodedTitle/$flag"
+                                    )
+                                }
                             }
                         },
                         enabled = newChatTitle.isNotBlank()
@@ -237,13 +243,13 @@ fun ChatListScreen(
                                 chat.title,
                                 StandardCharsets.UTF_8.toString()
                             )
-
                             val incognitoFlag = if (chat.isIncognito) 1 else 0
 
-                            navController.navigate("chat/${chat.chatId}/$encodedTitle/$incognitoFlag")
+                            navController.navigate(
+                                "chat/${chat.chatId}/$encodedTitle/$incognitoFlag"
+                            )
                         },
-
-                                onRename = {
+                        onRename = {
                             renameChatId = chat.chatId
                             renameChatTitle = chat.title
                             isRenameDialogOpen = true
@@ -277,7 +283,6 @@ private fun ChatRow(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            // Верхняя строка: название чата + иконки
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -291,7 +296,6 @@ private fun ChatRow(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                // время последнего сообщения
                 chat.lastMessageTime?.let { time ->
                     Text(
                         text = time,
@@ -318,7 +322,6 @@ private fun ChatRow(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // последнее сообщение
             if (chat.lastMessageText.isNotBlank()) {
                 Text(
                     text = chat.lastMessageText,
@@ -331,7 +334,6 @@ private fun ChatRow(
                 Spacer(modifier = Modifier.height(4.dp))
             }
 
-            // Нижняя строка: модель
             val modelText = chat.modelName
                 ?.takeIf { it.isNotBlank() }
                 ?: "Модель не выбрана"

@@ -12,7 +12,6 @@ import kotlinx.coroutines.launch
 class ChatListViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ChatRepository()
 
-    // 🔹 Тут теперь лежит не ChatDto, а уже собранный ChatListItem
     private val _chats = MutableStateFlow<List<ChatListItem>>(emptyList())
     val chats: StateFlow<List<ChatListItem>> = _chats.asStateFlow()
 
@@ -23,13 +22,9 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
     fun loadChats() {
         viewModelScope.launch {
             try {
-                // 1) все чаты пользователя
                 val chats = repository.getChats()
-
-                // 2) последние сообщения по всем чатам пользователя
                 val lastMessages = repository.getLastMessagesForUser()
 
-                // 3) собираем всё в ChatListItem
                 val items = chats.map { chat ->
                     val settings = repository.getChatSettings(chat.id)
                     val last = lastMessages.firstOrNull { it.chatId == chat.id }
@@ -47,23 +42,32 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
                 _chats.value = items
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Тут можно обработать ошибку, например, показать Toast/состояние ошибки
             }
         }
     }
 
-    //fun createChat(title: String) {
-    fun createChat(title: String, isIncognito: Boolean = false) {
-        viewModelScope.launch {
-            try {
-                // 👇 передаём флаг дальше в репозиторий
-                repository.createChat(title = title, isIncognito = isIncognito)
+    // ⬇ НОВАЯ версия createChat — suspend + возвращает ChatListItem
+    suspend fun createChat(title: String, isIncognito: Boolean = false): ChatListItem {
+        return try {
+            // репозиторий должен вернуть DTO созданного чата с id и флагом
+            val dto = repository.createChat(title = title, isIncognito = isIncognito)
 
-                loadChats() // перезагружаем список после создания
-            } catch (e: Exception) {
-                e.printStackTrace()
-                // тут можешь показать Toast и т.п.
-            }
+            val item = ChatListItem(
+                chatId = dto.id,
+                title = dto.title,
+                modelName = null,             // пока модель не выбрана
+                lastMessageText = "Нет сообщений",
+                lastMessageTime = null,
+                isIncognito = dto.isIncognito // важно: берём с бэка
+            )
+
+            // добавляем в текущий список, чтобы он сразу появился в списке чатов
+            _chats.value = _chats.value + item
+
+            item
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw e          // пробрасываем, чтобы диалог мог отреагировать
         }
     }
 
@@ -71,7 +75,7 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             try {
                 repository.deleteChat(chatId)
-                loadChats() // Перезагружаем список после удаления
+                loadChats()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -84,7 +88,6 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
                 api.renameChat(id, RenameChatRequest(newTitle))
                 loadChats()
             } catch (e: Exception) {
-                // обработка ошибки, тост и т.п.
                 e.printStackTrace()
             }
         }
