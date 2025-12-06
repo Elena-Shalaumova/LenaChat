@@ -35,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.easybot.ChatListItem
 
-
 @Composable
 fun ChatListScreen(
     navController: NavHostController,
@@ -47,6 +46,8 @@ fun ChatListScreen(
     // диалог создания
     var isCreateDialogOpen by remember { mutableStateOf(false) }
     var newChatTitle by remember { mutableStateOf("") }
+    // ⚡ флаг "инкогнито чат"
+    var isIncognito by remember { mutableStateOf(false) }
 
     // диалог переименования
     var isRenameDialogOpen by remember { mutableStateOf(false) }
@@ -96,6 +97,7 @@ fun ChatListScreen(
             FloatingActionButton(
                 onClick = {
                     newChatTitle = ""
+                    isIncognito = false          // по умолчанию обычный чат
                     isCreateDialogOpen = true
                 },
                 containerColor = MaterialTheme.colorScheme.primary
@@ -125,6 +127,23 @@ fun ChatListScreen(
                             label = { Text("Название чата") },
                             singleLine = true
                         )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // 🔹 переключатель "Инкогнито чат"
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Инкогнито чат",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Switch(
+                                checked = isIncognito,
+                                onCheckedChange = { isIncognito = it }
+                            )
+                        }
                     }
                 },
                 confirmButton = {
@@ -132,7 +151,8 @@ fun ChatListScreen(
                         onClick = {
                             val title = newChatTitle.trim()
                             if (title.isNotEmpty()) {
-                                viewModel.createChat(title)
+                                // передаём флаг инкогнито во ViewModel
+                                viewModel.createChat(title, isIncognito = isIncognito)
                                 isCreateDialogOpen = false
                             }
                         },
@@ -217,9 +237,13 @@ fun ChatListScreen(
                                 chat.title,
                                 StandardCharsets.UTF_8.toString()
                             )
-                            navController.navigate("chat/${chat.chatId}/$encodedTitle")
+
+                            val incognitoFlag = if (chat.isIncognito) 1 else 0
+
+                            navController.navigate("chat/${chat.chatId}/$encodedTitle/$incognitoFlag")
                         },
-                        onRename = {
+
+                                onRename = {
                             renameChatId = chat.chatId
                             renameChatTitle = chat.title
                             isRenameDialogOpen = true
@@ -230,7 +254,7 @@ fun ChatListScreen(
                     )
                 }
             }
-            }
+        }
     }
 }
 
@@ -270,11 +294,12 @@ private fun ChatRow(
                 // время последнего сообщения
                 chat.lastMessageTime?.let { time ->
                     Text(
-                        text = time,        // потом сделаем красиво "13:45 / Вчера"
+                        text = time,
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFFCCE2FF)
                     )
                 }
+
                 IconButton(onClick = onRename) {
                     Icon(
                         imageVector = Icons.Default.Edit,
@@ -293,7 +318,7 @@ private fun ChatRow(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // 🔹 Новое: последнее сообщение
+            // последнее сообщение
             if (chat.lastMessageText.isNotBlank()) {
                 Text(
                     text = chat.lastMessageText,

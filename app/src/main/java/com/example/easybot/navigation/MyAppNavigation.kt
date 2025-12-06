@@ -28,26 +28,29 @@ fun MyAppNavigation(navController: NavHostController) {
             SettingsScreen(navController = navController)
         }
 
-        composable(Routes.Help) { HelpScreen(navController) }
-
-//        composable(Routes.AdminPanel) {
-//            AdminPanelScreen(navController = navController)
-//        }
+        composable(Routes.Help) {
+            HelpScreen(navController)
+        }
 
         composable(
-            route = Routes.Chat, // "chat/{chatId}/{chatTitle}"
+            route = Routes.Chat, // "chat/{chatId}/{chatTitle}/{incognitoFlag}"
             arguments = listOf(
-                navArgument("chatId") { type = NavType.LongType },
-                navArgument("chatTitle") { type = NavType.StringType }
+                navArgument("chatId")       { type = NavType.LongType   },
+                navArgument("chatTitle")    { type = NavType.StringType },
+                navArgument("incognitoFlag"){ type = NavType.IntType; defaultValue = 0 }
             )
         ) { backStackEntry ->
+
             val chatId = backStackEntry.arguments?.getLong("chatId") ?: return@composable
             val chatTitle = backStackEntry.arguments?.getString("chatTitle") ?: "Чат"
+            val incognitoFlag = backStackEntry.arguments?.getInt("incognitoFlag") ?: 0
+            // 0 = обычный чат, 1 = инкогнито
 
-            val chatVm: ChatViewModel = viewModel(key = "chat_$chatId")
+            val chatVm: ChatViewModel = viewModel(key = "chat_${chatId}")
             ChatPage(
                 chatId = chatId,
-                chatTitle = chatTitle, // Передаем название в UI
+                chatTitle = chatTitle,
+                incognitoFlag = incognitoFlag,
                 viewModel = chatVm
             )
         }

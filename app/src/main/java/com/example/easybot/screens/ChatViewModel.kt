@@ -24,12 +24,20 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _isAiBusy = MutableStateFlow(false)
     val isAiBusy: StateFlow<Boolean> = _isAiBusy.asStateFlow()
 
+    var isIncognito: Boolean = false
+        private set
+
+
     // инициализация при заходе в чат
-    fun init(chatId: Long) {
-        if (this.chatId == chatId) return
+    fun init(chatId: Long, isIncognito: Boolean) {
+        if (this.chatId == chatId && this.isIncognito == isIncognito) return
+
         this.chatId = chatId
+        this.isIncognito = isIncognito
+
         loadMessages()
     }
+
 
     private fun loadMessages() {
         if (chatId == -1L) return

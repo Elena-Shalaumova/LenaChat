@@ -85,9 +85,13 @@ private fun uriToBase64(context: Context, uri: Uri): String? {
 fun ChatPage(
     chatId: Long,
     chatTitle: String,
+    incognitoFlag: Int,                       // 0 – обычный, 1 – инкогнито
     modifier: Modifier = Modifier,
     viewModel: ChatViewModel = viewModel()
 ) {
+    // ⚡ переводим флаг в Boolean
+    val isIncognito = incognitoFlag == 1
+
     val userId = UserSession.userId?.toInt()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -117,7 +121,7 @@ fun ChatPage(
         )
     }
 
-    // ---------- ШАГ 2: та самая функция сохранения из чата ----------
+    // ---------- сохранение настроек из чата ----------
     fun saveSettingsFromChat() {
         val id = userId ?: return
 
@@ -158,10 +162,13 @@ fun ChatPage(
         }
     }
 
-
     // при входе в экран инициализируем чат + грузим модели/настройки
-    LaunchedEffect(chatId) {
-        viewModel.init(chatId)
+    LaunchedEffect(chatId, incognitoFlag) {             // ⭐ добавили incognitoFlag в ключ
+        // ⭐ передаём в VM флаг инкогнито
+        viewModel.init(
+            chatId = chatId,
+            isIncognito = isIncognito
+        )
 
         val id = userId ?: return@LaunchedEffect   // если null – просто ничего не делаем
 
@@ -226,9 +233,6 @@ fun ChatPage(
     // ---- прикрепленные картинки ----
     var pendingImagesBase64 by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    // дальше твои лаунчеры, MessageInput, список сообщений и т.д.
-    // Я оставляю всё, как у тебя было, только AppHeader меняем ниже
-
     // ---------- ЛАУНЧЕР ОДНОЙ КАРТИНКИ ----------
     val imagePickerLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -281,7 +285,6 @@ fun ChatPage(
 
     Column(modifier = modifier.fillMaxSize()) {
 
-        // 🔼 ТУТ НОВЫЙ ВЫЗОВ AppHeader С ВЫБОРОМ МОДЕЛИ 🔼
         AppHeader(
             title = chatTitle,
             models = oLlamaModels,
@@ -292,7 +295,6 @@ fun ChatPage(
             onModelSelected = { model ->
                 selectedModel = model
                 UserSession.selectedModel = model
-                // сохраняем настройки ЧАТА
                 saveCurrentChatSettings()
             },
 
@@ -309,7 +311,7 @@ fun ChatPage(
             },
 
             onClear = { viewModel.clearCurrentChat() },
-            onSaveSettings = { saveSettingsFromChat() } // из слайдеров/поля ввода
+            onSaveSettings = { saveSettingsFromChat() }
         )
 
         Box(modifier = Modifier.weight(1f)) {
@@ -323,7 +325,7 @@ fun ChatPage(
             }
         }
 
-        // ---------- 🔥 НИЖНЯЯ ПАНЕЛЬ ВВОДА ----------
+        // ---------- НИЖНЯЯ ПАНЕЛЬ ВВОДА ----------
         MessageInput(
             hasAttachment = pendingImagesBase64.isNotEmpty(),
             isAiBusy = isAiBusy,
@@ -369,6 +371,7 @@ fun ChatPage(
         )
     }
 }
+
 
 
 @Composable

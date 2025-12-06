@@ -39,7 +39,8 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
                         title = chat.title,
                         modelName = settings.model,
                         lastMessageText = last?.text ?: "Нет сообщений",
-                        lastMessageTime = last?.createdAt
+                        lastMessageTime = last?.createdAt,
+                        isIncognito = chat.isIncognito
                     )
                 }
 
@@ -51,13 +52,17 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun createChat(title: String) {
+    //fun createChat(title: String) {
+    fun createChat(title: String, isIncognito: Boolean = false) {
         viewModelScope.launch {
             try {
-                repository.createChat(title)
-                loadChats() // Перезагружаем список после создания
+                // 👇 передаём флаг дальше в репозиторий
+                repository.createChat(title = title, isIncognito = isIncognito)
+
+                loadChats() // перезагружаем список после создания
             } catch (e: Exception) {
                 e.printStackTrace()
+                // тут можешь показать Toast и т.п.
             }
         }
     }

@@ -17,8 +17,8 @@ class ChatRepository(
         return api.getChats(getUserId())
     }
 
-    suspend fun createChat(title: String): ChatDto {
-        val request = CreateChatRequest(title = title, userId = getUserId())
+    suspend fun createChat(title: String, isIncognito: Boolean): ChatDto {
+        val request = CreateChatRequest(title = title, userId = getUserId(),isIncognito = isIncognito)
         return api.createChat(request)
     }
 

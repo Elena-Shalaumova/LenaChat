@@ -19,7 +19,7 @@ data class OllamaVersionDto(val version: String)
 data class OllamaModels(val models: List<String>)
 
 // --- DTO для чатов и сообщений ---
-data class ChatDto(val id: Int, val title: String, val model: String? = null )
+data class ChatDto(val id: Int,  val userId: Int, val title: String, val model: String? = null, val isIncognito: Boolean )
 data class MessageDto(val id: Int,
                       val chatId: Int,
                       val role: Int,
@@ -44,7 +44,7 @@ data class ChatSettingsRequest(
 )
 
 // --- DTO для запросов ---
-data class CreateChatRequest(val title: String, val userId: Int)
+data class CreateChatRequest(val title: String, val userId: Int,val isIncognito: Boolean = false)
 data class SendMessageRequest(
     val chatId: Int,
     val userId: Int,
