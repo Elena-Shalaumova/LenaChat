@@ -1,4 +1,3 @@
-
 package com.example.easybot.screens
 
 import android.Manifest
@@ -67,6 +66,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import com.example.easybot.ChatSettingsRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Close
 
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
@@ -367,7 +367,10 @@ fun ChatPage(
                 if (hasPermission) cameraLauncher.launch(null)
                 else permissionLauncher.launch(Manifest.permission.CAMERA)
             },
-            onClearAttachment = { pendingImagesBase64 = emptyList() }
+            onClearAttachment = { pendingImagesBase64 = emptyList() },
+            onStopGeneration = {
+                viewModel.stopGeneration()
+            }
         )
     }
 }
@@ -390,7 +393,7 @@ fun EmptyChatScreen(modifier: Modifier = Modifier) {
         Text(
             text = "Ask me anything",
             fontSize = 22.sp,
-            color = Color.Gray)
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -471,7 +474,10 @@ fun MessageBubble(message: MessageModel) {
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
-                .background(if (isUserMessage) UserMessageBlue else ModelMessageGrey)
+                .background(
+                    if (isUserMessage) MaterialTheme.colorScheme.secondaryContainer
+                    else MaterialTheme.colorScheme.surfaceVariant
+                )
                 .padding(12.dp)
         ) {
 
@@ -482,7 +488,11 @@ fun MessageBubble(message: MessageModel) {
                         Text(
                             text = visibleText,
                             fontWeight = FontWeight.W500,
-                            color = Color.Black
+                            color = if (isUserMessage) {
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
                     }
                 }
@@ -537,7 +547,8 @@ fun MessageInput(
     onPickImage: () -> Unit,
     onPickMultipleImages: () -> Unit,
     onCaptureImage: () -> Unit,
-    onClearAttachment: () -> Unit
+    onClearAttachment: () -> Unit,
+    onStopGeneration: () -> Unit
 ) {
     var message by remember { mutableStateOf("") }
     var showAttachments by remember { mutableStateOf(false) }
@@ -555,12 +566,12 @@ fun MessageInput(
                 modifier = Modifier
                     .padding(bottom = 4.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFE8F8FE))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
                     text = "Вложено изображение",
-                    color = Color(0xFF0D47A1),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp
                 )
                 Spacer(Modifier.width(8.dp))
@@ -592,47 +603,46 @@ fun MessageInput(
                     modifier = Modifier.weight(1f),
                     value = message,
                     onValueChange = { message = it },
-
-                    // 👉 Делаем поле многострочным
                     singleLine = false,
-                    maxLines = 5, // сколько строк максимум показать
-
+                    maxLines = 5,
                     keyboardOptions = KeyboardOptions.Default.copy(
-                        imeAction = ImeAction.Default  // чтобы клавиатура не пыталась "отправить"
+                        imeAction = ImeAction.Default
                     ),
-
                     shape = RoundedCornerShape(24.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFFE8F8FE),
-                        unfocusedContainerColor = Color(0xFFE8F8FE),
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent
+                        unfocusedBorderColor = Color.Transparent,
+                        cursorColor = MaterialTheme.colorScheme.primary
                     )
                 )
 
-
-                // КНОПКА ОТПРАВКИ
-                val isSendEnabled = !isAiBusy && (message.isNotEmpty() || hasAttachment)
-                IconButton(
-                    onClick = {
-                        if (message.isNotEmpty() || hasAttachment) {
-                            onMessageSend(message)
-                            message = ""
-                        }
-                    },
-                      //enabled = !isAiBusy && (message.isNotEmpty() || hasAttachment)
-                    enabled = isSendEnabled
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Send,
-                        contentDescription = "Send",
-                        //tint = MaterialTheme.colorScheme.primary
-                        tint = if (isSendEnabled) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            Color.Gray
-                        }
-                    )
+                // КНОПКА ОТПРАВКИ / ОСТАНОВКИ
+                if (isAiBusy) {
+                    IconButton(onClick = { onStopGeneration() }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Остановить генерацию",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                } else {
+                    val isSendEnabled = message.isNotEmpty() || hasAttachment
+                    IconButton(
+                        onClick = {
+                            if (isSendEnabled) {
+                                onMessageSend(message)
+                                message = ""
+                            }
+                        },
+                        enabled = isSendEnabled
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Send,
+                            contentDescription = "Send"
+                        )
+                    }
                 }
             }
 
@@ -688,14 +698,14 @@ fun MessageInput(
 }
 
 /** Bitmap -> base64 */
-private fun bitmapToBase64(bitmap: Bitmap): String {
+fun bitmapToBase64(bitmap: Bitmap): String {
     val stream = ByteArrayOutputStream()
     bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
     val bytes = stream.toByteArray()
     return Base64.encodeToString(bytes, Base64.NO_WRAP)
 }
 
-private fun saveChatSettingsFromChat(
+fun saveChatSettingsFromChat(
     chatId: Long,
     selectedModel: String,
     temperature: Double,
@@ -744,7 +754,7 @@ fun AppHeader(
     onTemperatureChange: (Double) -> Unit,
     onMaxTokensChange: (Int) -> Unit,
     onClear: () -> Unit = {},
-    onSaveSettings: () -> Unit = {}      // 👈 добавили новый колбэк
+    onSaveSettings: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -753,7 +763,7 @@ fun AppHeader(
             .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp)
     ) {
 
-        // ---------- Верхняя строка: название чата + "Очистить" ----------
+        // верхняя строка
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -776,19 +786,17 @@ fun AppHeader(
         if (models.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
 
-            // ---------- Выпадающее меню моделей + ползунки ----------
             ModelSelector(
                 models = models,
                 selectedModel = selectedModel,
                 onModelSelected = onModelSelected,
                 modifier = Modifier.fillMaxWidth(),
                 extraContent = {
-                    // 👉 сюда кладём температуру и maxTokens
 
                     var showTempInfo by remember { mutableStateOf(false) }
                     var showTokensInfo by remember { mutableStateOf(false) }
 
-                    // --- Заголовок температуры ---
+                    // температура
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "Температура: ${"%.2f".format(temperature)}",
@@ -803,22 +811,18 @@ fun AppHeader(
                         }
                     }
 
-                    // --- Slider температуры ---
                     Slider(
                         value = temperature.toFloat(),
                         onValueChange = { value ->
                             onTemperatureChange(value.toDouble())
                         },
-                        onValueChangeFinished = {
-                            // палец отпустили → сохраняем настройки чата
-                            onSaveSettings()
-                        },
+                        onValueChangeFinished = { onSaveSettings() },
                         valueRange = 0f..2f
                     )
 
                     Spacer(Modifier.height(12.dp))
 
-                    // ===== МАКСИМАЛЬНАЯ ДЛИНА (ТОКЕНЫ) + ? =====
+                    // токены
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "Максимальная длина ответа (токены)",
@@ -833,7 +837,6 @@ fun AppHeader(
                         }
                     }
 
-                    // текст в поле синхронизируем с maxTokens
                     var tokensText by remember(maxTokens) {
                         mutableStateOf(maxTokens.toString())
                     }
@@ -847,7 +850,7 @@ fun AppHeader(
                             if (digits.isNotEmpty()) {
                                 val valueInt = digits.toInt().coerceIn(64, 4096)
                                 onMaxTokensChange(valueInt)
-                                onSaveSettings()              // сохраняем при изменении
+                                onSaveSettings()
                             }
                         },
                         singleLine = true,
@@ -857,14 +860,12 @@ fun AppHeader(
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number
                         ),
-                        label = {
-                            Text(text = "Например: 512, 1024, 2048")
-                        }
+                        label = { Text("Например: 512, 1024, 2048") }
                     )
 
                     Spacer(Modifier.height(8.dp))
 
-                    // ===== Диалог для температуры =====
+                    // диалог температуры
                     if (showTempInfo) {
                         AlertDialog(
                             onDismissRequest = { showTempInfo = false },
@@ -883,7 +884,7 @@ fun AppHeader(
                         )
                     }
 
-                    // ===== Диалог для maxTokens =====
+                    // диалог токенов
                     if (showTokensInfo) {
                         AlertDialog(
                             onDismissRequest = { showTokensInfo = false },
@@ -905,12 +906,11 @@ fun AppHeader(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // ===== Кнопка сброса к стандартным значениям =====
                     Button(
                         onClick = {
                             onTemperatureChange(1.0)
                             onMaxTokensChange(1000)
-                            onSaveSettings()       // 👈 тоже сохраняем
+                            onSaveSettings()
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
@@ -919,6 +919,10 @@ fun AppHeader(
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(text = "Сбросить параметры к стандартным")
+                        Text("Сбросить параметры к стандартным")
                     }
-                })}}}
+                }
+            )
+        }
+    }
+}

@@ -13,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -65,7 +64,7 @@ fun ChatListScreen(
     }
 
     Scaffold(
-        containerColor = Color(0xFFE8F5FE),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Row(
                 modifier = Modifier
@@ -96,12 +95,13 @@ fun ChatListScreen(
                     isIncognito = false          // по умолчанию обычный чат
                     isCreateDialogOpen = true
                 },
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Создать новый чат",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -275,7 +275,10 @@ private fun ChatRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onOpen() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -290,7 +293,7 @@ private fun ChatRow(
                 Text(
                     text = chat.title,
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -300,7 +303,7 @@ private fun ChatRow(
                     Text(
                         text = time,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFFCCE2FF)
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
                 }
 
@@ -308,14 +311,14 @@ private fun ChatRow(
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Переименовать чат",
-                        tint = Color.White
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Удалить чат",
-                        tint = Color.White
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
@@ -326,7 +329,7 @@ private fun ChatRow(
                 Text(
                     text = chat.lastMessageText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -341,7 +344,7 @@ private fun ChatRow(
             Text(
                 text = modelText,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFFCCE2FF)
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
             )
         }
     }

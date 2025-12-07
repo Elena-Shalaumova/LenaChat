@@ -9,28 +9,35 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 
 // Используем новые цвета, которые мы определили
 private val DarkColorScheme = darkColorScheme(
     primary = PrimaryBlue, // Используем наш основной синий
+    onPrimary = Color.White,
     secondary = UserMessageBlue,
-    tertiary = ModelMessageGrey
+    onSecondary = Color.Black,
+    tertiary = ModelMessageGrey,
+    onTertiary = Color.Black,
+    background = Color(0xFF121212),
+    onBackground = Color(0xFFE6E1E5),
+    surface = Color(0xFF1D1B20),
+    onSurface = Color(0xFFE6E1E5),
+    surfaceVariant = Color(0xFF49454F),
+    onSurfaceVariant = Color(0xFFCAC4D0)
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryBlue, // Используем наш основной синий
-    secondary = UserMessageBlue,
-    tertiary = ModelMessageGrey
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
     onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
+    secondary = UserMessageBlue,
+    onSecondary = Color.Black,
+    tertiary = ModelMessageGrey,
+    onTertiary = Color.Black,
+    background = Color(0xFFFDFCFD),
     onBackground = Color(0xFF1C1B1F),
+    surface = Color(0xFFFFFFFF),
     onSurface = Color(0xFF1C1B1F),
-    */
 )
 
 @Composable

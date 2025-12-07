@@ -69,5 +69,14 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("io.coil-kt:coil-compose:2.6.0")
 
+    // Compose BOM (рекомендуется)
+    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    // Material3
+    implementation("androidx.compose.material3:material3")
+    // (по желанию) адаптация под размеры экрана
+    implementation("androidx.compose.material3:material3-window-size-class")
+    // остальное (activity-compose, navigation-compose и т.д.)
+    implementation("androidx.activity:activity-compose:1.9.0")
+    implementation("androidx.navigation:navigation-compose:2.8.0")
 
 }

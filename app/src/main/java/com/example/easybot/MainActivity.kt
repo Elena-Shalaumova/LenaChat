@@ -11,10 +11,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-           EasyBotTheme(dynamicColor = false) { // Применяем нашу тему и отключаем динамический цвет
+            EasyBotTheme(dynamicColor = false) {   // применяем наш Material3 UI kit
                 val navController = rememberNavController()
                 MyAppNavigation(navController)
-           }
+            }
         }
     }
 }

@@ -8,7 +8,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -178,13 +177,13 @@ fun SettingsScreen(navController: NavController) {
     }
 
     Scaffold(
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Настройки", color = MaterialTheme.colorScheme.primary) },
+                title = { Text("Настройки", color = MaterialTheme.colorScheme.onSurface) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    navigationIconContentColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -210,7 +209,7 @@ fun SettingsScreen(navController: NavController) {
                 text = "Логин: $userLogin",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Normal,
-                color = Color.DarkGray
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -218,19 +217,22 @@ fun SettingsScreen(navController: NavController) {
             Text(
                 text = "Версия Ollama: $ollamaVersion",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (ollamaError != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 6.dp)
-                        .background(Color(0xFFFFCDD2), RoundedCornerShape(8.dp))
+                        .background(
+                            MaterialTheme.colorScheme.errorContainer,
+                            RoundedCornerShape(8.dp)
+                        )
                         .padding(12.dp)
                 ) {
                     Text(
                         text = ollamaError ?: "",
-                        color = Color(0xFFB00020),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -248,12 +250,12 @@ fun SettingsScreen(navController: NavController) {
                     Text(
                         text = "Потоковая передача ответов",
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Включите, чтобы получать ответы в режиме реального времени",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Switch(
@@ -314,7 +316,7 @@ fun SettingsScreen(navController: NavController) {
             Text(
                 text = "Модель ИИ (Ollama)",
                 style = MaterialTheme.typography.titleMedium,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -408,7 +410,7 @@ fun SettingsScreen(navController: NavController) {
                     .padding(horizontal = 24.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = Color.White,
+                    contentColor = MaterialTheme.colorScheme.onError,
                     disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
                 )
             ) {
@@ -476,8 +478,8 @@ fun SettingsScreen(navController: NavController) {
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isLoading) Color.Gray else MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White
+                    containerColor = if (isLoading) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary,
+                    contentColor = if (isLoading) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary
                 )
             ) {
                 Text(if (isLoading) "Сохранение..." else "Сохранить")

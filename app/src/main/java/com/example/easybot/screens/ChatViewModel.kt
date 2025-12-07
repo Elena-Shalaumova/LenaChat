@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull   // <--- ВАЖНО
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -27,6 +29,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     var isIncognito: Boolean = false
         private set
 
+    // 👉 текущая корутина запроса к API
+    private var currentJob: Job? = null
 
     // инициализация при заходе в чат
     fun init(chatId: Long, isIncognito: Boolean) {
@@ -37,7 +41,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         loadMessages()
     }
-
 
     private fun loadMessages() {
         if (chatId == -1L) return
@@ -51,13 +54,20 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ========== ОСТАНОВИТЬ ТЕКУЩЕЕ ГЕНЕРАЦИЮ ==========
+    fun stopGeneration() {
+        // отменяем корутину с запросом
+        currentJob?.cancel()
+    }
+
     // ========== ТЕКСТОВОЕ СООБЩЕНИЕ ==========
     fun sendMessage(question: String) {
         if (chatId == -1L || question.isBlank()) return
+        if (_isAiBusy.value) return
 
-        viewModelScope.launch {
-            if (_isAiBusy.value) return@launch
+        currentJob = viewModelScope.launch {
             _isAiBusy.value = true
+
             // 1. пузырь пользователя
             val userMsg = MessageModel(
                 id = -1L,
@@ -70,7 +80,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             )
             _messages.value = _messages.value + userMsg
 
-            // 2. заранее добавляем пустой пузырь ассистента ("...")
+            // 2. плейсхолдер ассистента
             val placeholderIndex = _messages.value.size
             _messages.value = _messages.value + MessageModel(
                 id = -2L,
@@ -83,22 +93,21 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             try {
-                // 3. ЖДЁМ ОТВЕТ НЕ ДОЛЬШЕ 3 МИНУТ
                 val ai = withTimeoutOrNull(3 * 60_000L) {
                     repository.sendTextMessage(chatId.toInt(), question)
                 }
 
                 if (ai == null) {
-                    // таймаут – заменяем плейсхолдер текстом ошибки
                     setErrorToPlaceholder(
                         placeholderIndex,
                         "Ответ занял больше 3 минут, запрос отменён."
                     )
                 } else {
-                    // 4. “печатаем” его внутрь плейсхолдера
                     streamAiMessageInto(placeholderIndex, ai)
                 }
-
+            } catch (e: CancellationException) {
+                // 👇 пользователь нажал "Стоп" — не считаем это ошибкой
+                setErrorToPlaceholder(placeholderIndex, "Генерация остановлена.")
             } catch (e: Exception) {
                 e.printStackTrace()
                 setErrorToPlaceholder(
@@ -107,17 +116,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 )
             } finally {
                 _isAiBusy.value = false
+                currentJob = null
             }
         }
     }
 
-    // ========== ОДНА КАРТИНКА (с текстом или без) ==========
+    // ========== ОДНА КАРТИНКА ==========
     fun sendImageMessage(base64Image: String, prompt: String?) {
         if (chatId == -1L) return
+        if (_isAiBusy.value) return
 
-        viewModelScope.launch {
-
-            if (_isAiBusy.value) return@launch
+        currentJob = viewModelScope.launch {
             _isAiBusy.value = true
 
             val userMsg = MessageModel(
@@ -159,7 +168,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 } else {
                     streamAiMessageInto(placeholderIndex, ai)
                 }
-
+            } catch (e: CancellationException) {
+                setErrorToPlaceholder(placeholderIndex, "Генерация остановлена.")
             } catch (e: Exception) {
                 e.printStackTrace()
                 setErrorToPlaceholder(
@@ -168,16 +178,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 )
             } finally {
                 _isAiBusy.value = false
+                currentJob = null
             }
         }
     }
 
-    // ========== НЕСКОЛЬКО КАРТИНОК (с текстом или без) ==========
+    // ========== НЕСКОЛЬКО КАРТИНОК ==========
     fun sendImagesMessage(images: List<String>, prompt: String?) {
         if (chatId == -1L || images.isEmpty()) return
+        if (_isAiBusy.value) return
 
-        viewModelScope.launch {
-            if (_isAiBusy.value) return@launch
+        currentJob = viewModelScope.launch {
             _isAiBusy.value = true
 
             val userMsg = MessageModel(
@@ -219,7 +230,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 } else {
                     streamAiMessageInto(placeholderIndex, ai)
                 }
-
+            } catch (e: CancellationException) {
+                setErrorToPlaceholder(placeholderIndex, "Генерация остановлена.")
             } catch (e: Exception) {
                 e.printStackTrace()
                 setErrorToPlaceholder(
@@ -228,11 +240,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 )
             } finally {
                 _isAiBusy.value = false
+                currentJob = null
             }
         }
     }
 
-    // очистка чата
     fun clearCurrentChat() {
         if (chatId == -1L) return
 
@@ -246,7 +258,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- вспомогательная функция: записать текст ошибки в плейсхолдер ---
     private fun setErrorToPlaceholder(index: Int, errorText: String) {
         val updated = _messages.value.toMutableList()
         val old = updated.getOrNull(index) ?: return
@@ -254,7 +265,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         _messages.value = updated
     }
 
-    // постепенный стриминг ответа в плейсхолдер
     private suspend fun streamAiMessageInto(index: Int, full: MessageModel) {
         val fullText = full.text.orEmpty()
         if (fullText.isEmpty()) return
