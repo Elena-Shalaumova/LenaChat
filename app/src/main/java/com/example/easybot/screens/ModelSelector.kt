@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -17,7 +18,7 @@ fun ModelSelector(
     selectedModel: String?,
     onModelSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
-    // 🔽 дополнительный контент под списком моделей (температура, maxTokens)
+    // если вдруг ещё где-то используешь
     extraContent: @Composable ColumnScope.() -> Unit = {}
 ) {
     var isExpanded by remember { mutableStateOf(false) }
@@ -31,20 +32,35 @@ fun ModelSelector(
             value = selectedModel ?: "",
             onValueChange = { },             // только выбор из списка
             readOnly = true,
-
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded)
             },
             modifier = Modifier
                 .menuAnchor()
-                .fillMaxWidth()
+                .fillMaxWidth(),
+            // 🔹 делаем фон именно белым, без сиреневого
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                disabledContainerColor = Color.White,
+                errorContainerColor = Color.White,
+
+                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                disabledIndicatorColor = MaterialTheme.colorScheme.outline,
+                errorIndicatorColor = MaterialTheme.colorScheme.error,
+
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                cursorColor = MaterialTheme.colorScheme.primary
+            )
         )
 
         ExposedDropdownMenu(
             expanded = isExpanded,
             onDismissRequest = { isExpanded = false }
         ) {
-            // --- список моделей ---
             models.forEach { model ->
                 DropdownMenuItem(
                     text = { Text(model) },
@@ -55,18 +71,17 @@ fun ModelSelector(
                 )
             }
 
-            // 🔵 разделитель + область под ползунки
+            // если хочешь убрать блок extraContent из меню – просто закомментируй всё ниже
             Divider(
                 color = MaterialTheme.colorScheme.primary,
                 thickness = 1.dp
             )
 
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Spacer(Modifier.height(8.dp))
-                extraContent()   // <--- сюда ты потом передашь температуру и maxTokens
+                extraContent()
             }
         }
     }
