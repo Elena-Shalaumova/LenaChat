@@ -11,7 +11,12 @@ import com.example.easybot.ChatListViewModel
 import com.example.easybot.screens.*
 
 @Composable
-fun MyAppNavigation(navController: NavHostController) {
+//fun MyAppNavigation(navController: NavHostController) {
+fun MyAppNavigation(
+    navController: NavHostController,
+    isDarkTheme: Boolean,
+    onThemeToggle: (Boolean) -> Unit
+) {
     NavHost(
         navController = navController,
         startDestination = Routes.Register
@@ -25,7 +30,12 @@ fun MyAppNavigation(navController: NavHostController) {
         }
 
         composable(Routes.Settings) {
-            SettingsScreen(navController = navController)
+            //SettingsScreen(navController = navController)
+            SettingsScreen(
+                navController = navController,
+                isDarkTheme = isDarkTheme,
+                onThemeToggle = onThemeToggle
+            )
         }
 
         composable(Routes.Help) {

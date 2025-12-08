@@ -23,6 +23,11 @@ import androidx.navigation.NavController
 import com.example.easybot.R
 import com.example.easybot.UserSession
 import com.example.easybot.navigation.Routes
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.graphics.Color
+
 
 
 @Composable
@@ -61,9 +66,10 @@ fun RegistrationPage(
             OutlinedTextField(
                 value = vm.login,
                 onValueChange = { vm.login = it },
-                label = { Text("Login") },
+                label = { Text("Логин") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -71,10 +77,11 @@ fun RegistrationPage(
             OutlinedTextField(
                 value = vm.password,
                 onValueChange = { vm.password = it },
-                label = { Text("Password") },
+                label = { Text("Пароль") },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -88,7 +95,7 @@ fun RegistrationPage(
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(22.dp))
 
             // Кнопка входа
             Button(
@@ -114,26 +121,23 @@ fun RegistrationPage(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(20.dp)
             ) {
-                Text(text = "Sign in", style = MaterialTheme.typography.bodyLarge)
+                Text(text = "Вход", style = MaterialTheme.typography.bodyLarge)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Кнопка регистрации
-            TextButton(
+            OutlinedButton(
                 onClick = {
                     vm.signUp { user ->
 
-                        // 🔥 Уведомление про автосмену модели
                         if (user.modelChanged) {
                             Toast.makeText(
                                 context,
                                 "Модель поменялась автоматически на актуальную: ${user.model ?: "неизвестно"}",
                                 Toast.LENGTH_LONG,
-
-                                ).show()
+                            ).show()
                         }
 
                         UserSession.userId = user.id?.toLong()
@@ -141,14 +145,20 @@ fun RegistrationPage(
                         nav.navigate(Routes.ChatList) {
                             popUpTo(Routes.Register) { inclusive = true }
                         }
-                }
-            }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color.White,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
             ) {
                 Text(
-                    text = "Sign up",
+                    text = "Регистрация",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
                 )
-        }
-    }
-} }
+            } }}}

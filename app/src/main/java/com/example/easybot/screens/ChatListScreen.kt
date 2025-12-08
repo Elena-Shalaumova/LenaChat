@@ -276,7 +276,7 @@ private fun ChatRow(
             .fillMaxWidth()
             .clickable { onOpen() },
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -325,17 +325,17 @@ private fun ChatRow(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            if (chat.lastMessageText.isNotBlank()) {
-                Text(
-                    text = chat.lastMessageText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-            }
+//            if (chat.lastMessageText.isNotBlank()) {
+//                Text(
+//                    text = chat.lastMessageText,
+//                    style = MaterialTheme.typography.bodySmall,
+//                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+//                    maxLines = 1,
+//                    overflow = TextOverflow.Ellipsis
+//                )
+//
+//                Spacer(modifier = Modifier.height(4.dp))
+                //}
 
             val modelText = chat.modelName
                 ?.takeIf { it.isNotBlank() }

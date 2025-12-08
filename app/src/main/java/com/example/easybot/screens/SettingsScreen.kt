@@ -20,11 +20,16 @@ import retrofit2.HttpException
 import com.example.easybot.navigation.Routes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(navController: NavController) {
-    // Берём текущее значение из UserSession, чтобы при открытии экрана оно подставилось
+fun SettingsScreen(
+    navController: NavController,
+    isDarkTheme: Boolean,
+    onThemeToggle: (Boolean) -> Unit
+) {
     var apiBaseUrl by remember { mutableStateOf(UserSession.apiBaseUrl) }
     val userLogin = UserSession.login ?: "N/A"
 
@@ -37,65 +42,44 @@ fun SettingsScreen(navController: NavController) {
     val api = remember { provideApi(apiBaseUrl) }
     val userId = (UserSession.userId ?: 0L).toInt()
 
-    // выбранная модель
-    var selectedModel by remember {
-        mutableStateOf(UserSession.selectedModel ?: "")
-    }
-
-    // 🔥 температура генерации
-    var temperature by remember {
-        mutableStateOf(UserSession.temperature ?: 0.7)
-    }
-
-    // 📏 максимальная длина ответа
-    var maxTokens by remember {
-        mutableStateOf(UserSession.maxTokens ?: 1024)
-    }
+    var selectedModel by remember { mutableStateOf(UserSession.selectedModel ?: "") }
+    var temperature by remember { mutableStateOf(UserSession.temperature ?: 0.7) }
+    var maxTokens by remember { mutableStateOf(UserSession.maxTokens ?: 1024) }
 
     var isModelDropdownExpanded by remember { mutableStateOf(false) }
     var ollamaVersion by remember { mutableStateOf<String?>(null) }
     var ollamaModels by remember { mutableStateOf<List<String>>(emptyList()) }
-    var availableModels by remember { mutableStateOf<List<String>>(emptyList()) }
     var ollamaError by remember { mutableStateOf<String?>(null) }
 
-
-
+    // ---------- загрузка данных ----------
     LaunchedEffect(userId) {
-
-        // 1. Сначала загружаем список моделей из Ollama через твой WebAPI
+        // 1. модели
         try {
-            val models = api.getAvailableModels()   // с бэка → /api/tags
+            val models = api.getAvailableModels()
             ollamaModels = models
         } catch (e: Exception) {
             e.printStackTrace()
             ollamaModels = emptyList()
         }
 
-        // 2. Пытаемся получить настройки пользователя
+        // 2. настройки пользователя
         try {
             val settings = api.getSettings(userId)
 
             streamEnabled = settings.stream
             selectedModel = settings.model ?: ""
-
-            // новые поля
             temperature = settings.temperature ?: 1.0
             maxTokens = settings.maxTokens ?: 1000
 
-            // запоминаем в сессии, чтобы чат видел актуальные значения
             UserSession.selectedModel = selectedModel
             UserSession.temperature = temperature
             UserSession.maxTokens = maxTokens
 
         } catch (e: HttpException) {
-            // 404 – настроек ещё нет, создаём дефолтные
             if (e.code() == 404) {
                 val defaultModel = ollamaModels.firstOrNull()
-
                 streamEnabled = false
                 selectedModel = defaultModel.orEmpty()
-
-                // temperature / maxTokens уже имеют дефолты из remember
 
                 if (defaultModel != null) {
                     try {
@@ -122,8 +106,11 @@ fun SettingsScreen(navController: NavController) {
             e.printStackTrace()
         }
 
-        // 3. Проверяем, есть ли выбранная модель в списке моделей из Ollama
-        if (ollamaModels.isNotEmpty() && selectedModel.isNotBlank() && selectedModel !in ollamaModels) {
+        // 3. если выбранной модели уже нет
+        if (ollamaModels.isNotEmpty() &&
+            selectedModel.isNotBlank() &&
+            selectedModel !in ollamaModels
+        ) {
             val fallback = ollamaModels.first()
 
             Toast.makeText(
@@ -132,11 +119,9 @@ fun SettingsScreen(navController: NavController) {
                 Toast.LENGTH_LONG
             ).show()
 
-            // обновляем UI
             selectedModel = fallback
             UserSession.selectedModel = fallback
 
-            // И ВАЖНО: сразу же сохраняем исправленную модель в БД
             try {
                 api.saveSettings(
                     SettingsRequest(
@@ -152,39 +137,32 @@ fun SettingsScreen(navController: NavController) {
             }
         }
 
-        // 4. Версия Ollama (как у тебя было)
+        // 4. версия ollama
         try {
             val versionDto = api.getOllamaVersion()
             ollamaVersion = versionDto.version
         } catch (e: Exception) {
             e.printStackTrace()
             ollamaVersion = "неизвестна"
-
             ollamaError = when (e) {
                 is java.net.ConnectException ->
                     "❌ Ollama недоступна — сервер не отвечает"
-
                 is java.net.SocketTimeoutException ->
                     "⏱️ Ollama не успевает отвечать"
-
                 is retrofit2.HttpException ->
                     "❌ Ошибка Ollama (код ${e.code()})"
-
                 else ->
                     "⚠️ Не удалось подключиться к Ollama"
             }
         }
     }
 
+    val scrollState = rememberScrollState()
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text("Настройки", color = MaterialTheme.colorScheme.onSurface) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
-                ),
+            CenterAlignedTopAppBar(
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -192,171 +170,263 @@ fun SettingsScreen(navController: NavController) {
                             contentDescription = "Назад"
                         )
                     }
-                }
+                },
+                title = { Text("Настройки") }
             )
         }
     ) { paddingValues ->
+
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 48.dp)
-                .padding(bottom = 64.dp),
-            horizontalAlignment = Alignment.Start,
-            verticalArrangement = Arrangement.Bottom
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Логин: $userLogin",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurface
-            )
 
-            Spacer(modifier = Modifier.height(32.dp))
-
+            // ------- АККАУНТ -------
             Text(
-                text = "Версия Ollama: $ollamaVersion",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = "Аккаунт",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
             )
-            if (ollamaError != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp)
-                        .background(
-                            MaterialTheme.colorScheme.errorContainer,
-                            RoundedCornerShape(8.dp)
-                        )
-                        .padding(12.dp)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = ollamaError ?: "",
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "Логин",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = userLogin,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
 
-            Row(
+            // ------- ТЕМА -------
+            Text(
+                text = "Оформление",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "Тема оформления",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Переключайте между светлой и тёмной темами",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = isDarkTheme,
+                        onCheckedChange = onThemeToggle
+                    )
+                }
+            }
+
+            // ------- OLLAMA -------
+            Text(
+                text = "Ollama",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth(0.85f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Потоковая передача ответов",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Включите, чтобы получать ответы в режиме реального времени",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = "Версия Ollama: ${ollamaVersion ?: "—"}",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-                Switch(
-                    checked = streamEnabled,
-                    onCheckedChange = { streamEnabled = it }
-                )
-            }
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // --- Новый блок для baseUrl --- //
-            Text(
-                text = "Строка подключения к API",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = apiBaseUrl,
-                onValueChange = { apiBaseUrl = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("http://192.168.3.8:5167/") }
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Button(
-                onClick = {
-                    if (apiBaseUrl.isNotBlank()) {
-                        UserSession.apiBaseUrl = apiBaseUrl
-                        Toast.makeText(
-                            context,
-                            "Строка подключения к API обновлена",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "URL не может быть пустым",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                    if (ollamaError != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    MaterialTheme.colorScheme.errorContainer,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(12.dp)
+                        ) {
+                            Text(
+                                text = ollamaError!!,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
-                }
-            ) {
-                Text("Сохранить")
-            }
 
-
-
-
-
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Модель ИИ (Ollama)",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            ExposedDropdownMenuBox(
-                expanded = isModelDropdownExpanded,
-                onExpandedChange = { isModelDropdownExpanded = !isModelDropdownExpanded }
-            ) {
-                TextField(
-                    value = selectedModel,
-                    onValueChange = { }, // только выбор из списка
-                    readOnly = true,
-                    label = { Text("Выберите модель") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = isModelDropdownExpanded)
-                    },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                )
-                // Меню выпадающего списка
-                ExposedDropdownMenu(
-                    expanded = isModelDropdownExpanded,
-                    onDismissRequest = { isModelDropdownExpanded = false }
-                ) {
-                    ollamaModels.forEach { modelName ->
-                        DropdownMenuItem(
-                            text = { Text(modelName) },
-                            onClick = {
-                                selectedModel = modelName
-                                UserSession.selectedModel = modelName
-                                isModelDropdownExpanded = false
-                            }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = "Потоковая передача ответов",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "Ответ появляется по мере генерации",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = streamEnabled,
+                            onCheckedChange = { streamEnabled = it }
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            // ------- API BASE URL -------
+            Text(
+                text = "Подключение к API",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = apiBaseUrl,
+                        onValueChange = { apiBaseUrl = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Строка подключения к API") },
+                        placeholder = { Text("http://10.16.77.51:5167/") }
+                    )
+                    Button(
+                        onClick = {
+                            if (apiBaseUrl.isNotBlank()) {
+                                UserSession.apiBaseUrl = apiBaseUrl
+                                Toast.makeText(
+                                    context,
+                                    "Строка подключения к API обновлена",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "URL не может быть пустым",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        },
+                        modifier = Modifier.align(Alignment.End),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Text("Сохранить")
+                    }
+                }
+            }
 
-            // Кнопка "Очистить все чаты"
+            // ------- МОДЕЛЬ ИИ -------
+            Text(
+                text = "Модель ИИ (Ollama)",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    ExposedDropdownMenuBox(
+                        expanded = isModelDropdownExpanded,
+                        onExpandedChange = { isModelDropdownExpanded = !isModelDropdownExpanded }
+                    ) {
+                        TextField(
+                            value = selectedModel,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Выберите модель") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = isModelDropdownExpanded
+                                )
+                            },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = isModelDropdownExpanded,
+                            onDismissRequest = { isModelDropdownExpanded = false }
+                        ) {
+                            ollamaModels.forEach { modelName ->
+                                DropdownMenuItem(
+                                    text = { Text(modelName) },
+                                    onClick = {
+                                        selectedModel = modelName
+                                        UserSession.selectedModel = modelName
+                                        isModelDropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ------- КНОПКИ НИЗА ЭКРАНА -------
+            Spacer(Modifier.height(8.dp))
+
             Button(
                 onClick = {
                     val uid = UserSession.userId?.toInt()
@@ -373,7 +443,6 @@ fun SettingsScreen(navController: NavController) {
                         isClearingChats = true
                         try {
                             val chats = api.getChats(uid)
-
                             if (chats.isEmpty()) {
                                 Toast.makeText(
                                     context,
@@ -405,21 +474,17 @@ fun SettingsScreen(navController: NavController) {
                     }
                 },
                 enabled = !isClearingChats && !isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+                modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError,
                     disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
-                )
+                ),
+                shape = RoundedCornerShape(24.dp)
             ) {
                 Text(if (isClearingChats) "Очистка..." else "Очистить все чаты")
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Кнопка "Сохранить" (общие настройки)
             Button(
                 onClick = {
                     val uid = UserSession.userId?.toInt()
@@ -445,11 +510,9 @@ fun SettingsScreen(navController: NavController) {
                                 )
                             )
                             if (response.isSuccessful) {
-                                // обновим сессию
                                 UserSession.selectedModel = selectedModel
                                 UserSession.temperature = temperature
                                 UserSession.maxTokens = maxTokens
-
                                 Toast.makeText(
                                     context,
                                     "Настройки сохранены",
@@ -474,21 +537,25 @@ fun SettingsScreen(navController: NavController) {
                     }
                 },
                 enabled = !isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+                modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isLoading) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary,
-                    contentColor = if (isLoading) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary
-                )
+                    containerColor = if (isLoading)
+                        MaterialTheme.colorScheme.surfaceVariant
+                    else
+                        MaterialTheme.colorScheme.primary,
+                    contentColor = if (isLoading)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    else
+                        MaterialTheme.colorScheme.onPrimary
+                ),
+                shape = RoundedCornerShape(24.dp)
             ) {
                 Text(if (isLoading) "Сохранение..." else "Сохранить")
             }
+
             TextButton(
                 onClick = { navController.navigate(Routes.Help) },
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(top = 4.dp, bottom = 24.dp)
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
                 Text(
                     text = "О приложении",
@@ -496,6 +563,8 @@ fun SettingsScreen(navController: NavController) {
                     fontWeight = FontWeight.SemiBold
                 )
             }
+
+            Spacer(Modifier.height(8.dp))
         }
     }
 }

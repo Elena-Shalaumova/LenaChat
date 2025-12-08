@@ -67,6 +67,13 @@ import com.example.easybot.ChatSettingsRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.ui.draw.rotate
+import androidx.compose.material.icons.filled.StopCircle
+import androidx.compose.material.icons.filled.MoreVert
+
+
+
 
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
@@ -95,6 +102,14 @@ fun ChatPage(
     val userId = UserSession.userId?.toInt()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // локальное название чата, чтобы можно было его менять
+    var chatTitleState by remember { mutableStateOf(chatTitle) }
+
+    // диалог переименования
+    var isRenameDialogOpen by remember { mutableStateOf(false) }
+    var newChatTitle by remember { mutableStateOf(chatTitleState) }
+
 
     var isLoading by remember { mutableStateOf(false) }
     var streamEnabled by remember { mutableStateOf(false) }
@@ -283,14 +298,16 @@ fun ChatPage(
             }
         }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize().background(Color(0xFFF2F4F7))
+    ) {
 
         AppHeader(
-            title = chatTitle,
+            title = chatTitleState,
             models = oLlamaModels,
             selectedModel = selectedModel,
             temperature = temperature,
             maxTokens = maxTokens,
+
 
             onModelSelected = { model ->
                 selectedModel = model
@@ -311,8 +328,54 @@ fun ChatPage(
             },
 
             onClear = { viewModel.clearCurrentChat() },
-            onSaveSettings = { saveSettingsFromChat() }
+            onSaveSettings = { saveSettingsFromChat() },
+
+            onRenameChat = {
+                // открыть диалог, подставив текущее имя
+                newChatTitle = chatTitleState
+                isRenameDialogOpen = true
+            }
         )
+
+        // ---------- ДИАЛОГ ПЕРЕИМЕНОВАНИЯ ЧАТА ----------
+        if (isRenameDialogOpen) {
+            AlertDialog(
+                onDismissRequest = { isRenameDialogOpen = false },
+                title = { Text("Переименовать чат") },
+                text = {
+                    OutlinedTextField(
+                        value = newChatTitle,
+                        onValueChange = { newChatTitle = it },
+                        label = { Text("Название чата") },
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val titleTrimmed = newChatTitle.trim()
+                            if (titleTrimmed.isNotEmpty()) {
+                                chatTitleState = titleTrimmed
+
+                                // 👉 здесь при желании можно сохранить на бэке:
+                                // coroutineScope.launch {
+                                //     api.renameChat(chatId.toInt(), titleTrimmed)
+                                // }
+                            }
+                            isRenameDialogOpen = false
+                        }
+                    ) {
+                        Text("Сохранить")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { isRenameDialogOpen = false }) {
+                        Text("Отмена")
+                    }
+                }
+            )
+        }
+
 
         Box(modifier = Modifier.weight(1f)) {
             if (messages.isEmpty()) {
@@ -384,15 +447,16 @@ fun EmptyChatScreen(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            modifier = Modifier.size(60.dp),
-            painter = painterResource(id = R.drawable.baseline_question_answer_24),
-            contentDescription = "Icon",
-            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-        )
+//        Icon(
+//            modifier = Modifier.size(60.dp),
+//            painter = painterResource(id = R.drawable.baseline_question_answer_24),
+//            //contentDescription = "Icon",
+//            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+//        )
         Text(
-            text = "Ask me anything",
+            text = "Чем помочь?",
             fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -421,7 +485,8 @@ fun MessageList(
     }
 
     LazyColumn(
-        modifier = modifier.padding(horizontal = 8.dp),
+        modifier = modifier
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         reverseLayout = false,         // обычный порядок
         state = listState
     ) {
@@ -594,13 +659,14 @@ fun MessageInput(
                         imageVector = Icons.Filled.AttachFile,
                         contentDescription = "Вложения",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier
+                            .size(24.dp)
+                            .rotate(45f)
                     )
                 }
 
                 // ПОЛЕ ВВОДА
                 OutlinedTextField(
-                    modifier = Modifier.weight(1f),
                     value = message,
                     onValueChange = { message = it },
                     singleLine = false,
@@ -608,39 +674,61 @@ fun MessageInput(
                     keyboardOptions = KeyboardOptions.Default.copy(
                         imeAction = ImeAction.Default
                     ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 0.8.dp, vertical = 8.dp),
+
+                    placeholder = {
+                        Text(
+                            text = "Введите ваш вопрос…",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    },
+
                     shape = RoundedCornerShape(24.dp),
+
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
+                        // Белый фон (или почти белый в зависимости от темы)
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+
+                        // Бордеры — светло-серые/синие по дизайну Material
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+
                         cursorColor = MaterialTheme.colorScheme.primary
                     )
                 )
 
+
                 // КНОПКА ОТПРАВКИ / ОСТАНОВКИ
                 if (isAiBusy) {
-                    IconButton(onClick = { onStopGeneration() }) {
+                    IconButton(onClick = onStopGeneration) {
                         Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Остановить генерацию",
-                            tint = MaterialTheme.colorScheme.error
+                            imageVector = Icons.Default.StopCircle,
+                            contentDescription = "Stop",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 } else {
-                    val isSendEnabled = message.isNotEmpty() || hasAttachment
+                    val isSendEnabled = message.isNotBlank() || hasAttachment
+
                     IconButton(
                         onClick = {
                             if (isSendEnabled) {
                                 onMessageSend(message)
-                                message = ""
                             }
                         },
                         enabled = isSendEnabled
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Send,
-                            contentDescription = "Send"
+                            contentDescription = "Send",
+                            tint = if (isSendEnabled)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -649,7 +737,9 @@ fun MessageInput(
             // ВЫПАДАЮЩЕЕ МЕНЮ ВЛОЖЕНИЙ
             DropdownMenu(
                 expanded = showAttachments,
-                onDismissRequest = { showAttachments = false }
+                onDismissRequest = { showAttachments = false },
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.surface) // белая/тёмная карточка
             ) {
                 DropdownMenuItem(
                     text = { Text("Сделать фото") },
@@ -693,11 +783,9 @@ fun MessageInput(
                     }
                 )
             }
-        }
-    }
-}
+        }}}
 
-/** Bitmap -> base64 */
+            /** Bitmap -> base64 */
 fun bitmapToBase64(bitmap: Bitmap): String {
     val stream = ByteArrayOutputStream()
     bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
@@ -754,45 +842,82 @@ fun AppHeader(
     onTemperatureChange: (Double) -> Unit,
     onMaxTokensChange: (Int) -> Unit,
     onClear: () -> Unit = {},
-    onSaveSettings: () -> Unit = {}
+    onSaveSettings: () -> Unit = {},
+    onRenameChat: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primary)
+            .background(Color.White) // белый верх
             .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp)
     ) {
 
-        // верхняя строка
+        // --------- ЛОГО + НАЗВАНИЕ + МЕНЮ ---------
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // логотип слева
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "Логотип",
+                modifier = Modifier.size(32.dp)
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // название чата
             Text(
                 text = title,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
-            TextButton(onClick = onClear) {
-                Text(
-                    text = "Очистить",
-                    color = Color.White,
-                    fontSize = 16.sp
+
+            // меню с тремя точками
+            var menuExpanded by remember { mutableStateOf(false) }
+
+            IconButton(onClick = { menuExpanded = true }) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "Меню",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Очистить чат") },
+                    onClick = {
+                        menuExpanded = false
+                        onClear()
+                    }
+                )
+
+                DropdownMenuItem(
+                    text = { Text("Переименовать чат") },
+                    onClick = {
+                        menuExpanded = false
+                        onRenameChat()
+                    }
                 )
             }
         }
 
+        // --------- ВЫБОР МОДЕЛИ + НАСТРОЙКИ ---------
         if (models.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
 
             ModelSelector(
                 models = models,
                 selectedModel = selectedModel,
                 onModelSelected = onModelSelected,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(0.85f),   // укороченный дропдаун
                 extraContent = {
-
                     var showTempInfo by remember { mutableStateOf(false) }
                     var showTokensInfo by remember { mutableStateOf(false) }
 
@@ -865,7 +990,7 @@ fun AppHeader(
 
                     Spacer(Modifier.height(8.dp))
 
-                    // диалог температуры
+                    // диалоги
                     if (showTempInfo) {
                         AlertDialog(
                             onDismissRequest = { showTempInfo = false },
@@ -884,7 +1009,6 @@ fun AppHeader(
                         )
                     }
 
-                    // диалог токенов
                     if (showTokensInfo) {
                         AlertDialog(
                             onDismissRequest = { showTokensInfo = false },
