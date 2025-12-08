@@ -71,7 +71,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.ui.draw.rotate
 import androidx.compose.material.icons.filled.StopCircle
 import androidx.compose.material.icons.filled.MoreVert
-
+import androidx.compose.material.icons.filled.Settings
 
 
 
@@ -831,6 +831,7 @@ fun saveChatSettingsFromChat(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppHeader(
     title: String,
@@ -848,16 +849,19 @@ fun AppHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White) // белый верх
+            .background(Color.White)
             .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp)
     ) {
+        // --- Стейт для меню настроек и меню чата ---
+        var settingsExpanded by remember { mutableStateOf(false) }
+        var menuExpanded by remember { mutableStateOf(false) }
 
-        // --------- ЛОГО + НАЗВАНИЕ + МЕНЮ ---------
+        // --------- ЛОГО + НАЗВАНИЕ + ИКОНКИ СПРАВА ---------
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // логотип слева
+            // логотип
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = "Логотип",
@@ -875,9 +879,16 @@ fun AppHeader(
                 modifier = Modifier.weight(1f)
             )
 
-            // меню с тремя точками
-            var menuExpanded by remember { mutableStateOf(false) }
+            // иконка "настройки ответа" (температура, токены)
+            IconButton(onClick = { settingsExpanded = true }) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Настройки ответа",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
 
+            // меню из трёх точек
             IconButton(onClick = { menuExpanded = true }) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
@@ -897,7 +908,6 @@ fun AppHeader(
                         onClear()
                     }
                 )
-
                 DropdownMenuItem(
                     text = { Text("Переименовать чат") },
                     onClick = {
@@ -908,7 +918,7 @@ fun AppHeader(
             }
         }
 
-        // --------- ВЫБОР МОДЕЛИ + НАСТРОЙКИ ---------
+        // --------- ВЫБОР МОДЕЛИ (ВСЕГДА ВИДЕН) ---------
         if (models.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
 
@@ -916,137 +926,140 @@ fun AppHeader(
                 models = models,
                 selectedModel = selectedModel,
                 onModelSelected = onModelSelected,
-                modifier = Modifier.fillMaxWidth(0.85f),   // укороченный дропдаун
-                extraContent = {
-                    var showTempInfo by remember { mutableStateOf(false) }
-                    var showTokensInfo by remember { mutableStateOf(false) }
+                modifier = Modifier.fillMaxWidth(0.85f)   // чуть короче, как хотели
+            )
+        }
 
-                    // температура
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Температура: ${"%.2f".format(temperature)}",
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = { showTempInfo = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = "Что такое температура?"
-                            )
-                        }
-                    }
+        // --------- DROPDOWN С ТЕМПЕРАТУРОЙ И ТОКЕНАМИ ---------
+        DropdownMenu(
+            expanded = settingsExpanded,
+            onDismissRequest = { settingsExpanded = false },
+            modifier = Modifier.width(360.dp)
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                var showTempInfo by remember { mutableStateOf(false) }
+                var showTokensInfo by remember { mutableStateOf(false) }
 
-                    Slider(
-                        value = temperature.toFloat(),
-                        onValueChange = { value ->
-                            onTemperatureChange(value.toDouble())
-                        },
-                        onValueChangeFinished = { onSaveSettings() },
-                        valueRange = 0f..2f
+                // температура
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Температура: ${"%.2f".format(temperature)}",
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.weight(1f)
                     )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    // токены
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Максимальная длина ответа (токены)",
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.weight(1f)
+                    IconButton(onClick = { showTempInfo = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Что такое температура?"
                         )
-                        IconButton(onClick = { showTokensInfo = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = "Что такое максимальная длина?"
-                            )
-                        }
-                    }
-
-                    var tokensText by remember(maxTokens) {
-                        mutableStateOf(maxTokens.toString())
-                    }
-
-                    OutlinedTextField(
-                        value = tokensText,
-                        onValueChange = { text ->
-                            val digits = text.filter { it.isDigit() }
-                            tokensText = digits
-
-                            if (digits.isNotEmpty()) {
-                                val valueInt = digits.toInt().coerceIn(64, 4096)
-                                onMaxTokensChange(valueInt)
-                                onSaveSettings()
-                            }
-                        },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp, bottom = 8.dp),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number
-                        ),
-                        label = { Text("Например: 512, 1024, 2048") }
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    // диалоги
-                    if (showTempInfo) {
-                        AlertDialog(
-                            onDismissRequest = { showTempInfo = false },
-                            title = { Text("Температура") },
-                            text = {
-                                Text(
-                                    "0 — консервативные и предсказуемые ответы\n" +
-                                            "2 — креативные и непредсказуемые ответы"
-                                )
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showTempInfo = false }) {
-                                    Text("Понятно")
-                                }
-                            }
-                        )
-                    }
-
-                    if (showTokensInfo) {
-                        AlertDialog(
-                            onDismissRequest = { showTokensInfo = false },
-                            title = { Text("Максимальная длина ответа") },
-                            text = {
-                                Text(
-                                    "Ограничивает максимальное количество токенов " +
-                                            "в одном ответе модели. Меньше — короче и быстрее, " +
-                                            "больше — длиннее и детальнее."
-                                )
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showTokensInfo = false }) {
-                                    Text("Понятно")
-                                }
-                            }
-                        )
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    Button(
-                        onClick = {
-                            onTemperatureChange(1.0)
-                            onMaxTokensChange(1000)
-                            onSaveSettings()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Сбросить параметры к стандартным")
                     }
                 }
-            )
+
+                Slider(
+                    value = temperature.toFloat(),
+                    onValueChange = { value -> onTemperatureChange(value.toDouble()) },
+                    onValueChangeFinished = { onSaveSettings() },
+                    valueRange = 0f..2f
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                // токены
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Максимальная длина ответа (токены)",
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { showTokensInfo = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Что такое максимальная длина?"
+                        )
+                    }
+                }
+
+                var tokensText by remember(maxTokens) {
+                    mutableStateOf(maxTokens.toString())
+                }
+
+                OutlinedTextField(
+                    value = tokensText,
+                    onValueChange = { text ->
+                        val digits = text.filter { it.isDigit() }
+                        tokensText = digits
+
+                        if (digits.isNotEmpty()) {
+                            val valueInt = digits.toInt().coerceIn(64, 4096)
+                            onMaxTokensChange(valueInt)
+                            onSaveSettings()
+                        }
+                    },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp, bottom = 8.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    label = { Text("Например: 512, 1024, 2048") }
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                if (showTempInfo) {
+                    AlertDialog(
+                        onDismissRequest = { showTempInfo = false },
+                        title = { Text("Температура") },
+                        text = {
+                            Text(
+                                "0 — консервативные и предсказуемые ответы\n" +
+                                        "2 — креативные и непредсказуемые ответы"
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showTempInfo = false }) {
+                                Text("Понятно")
+                            }
+                        }
+                    )
+                }
+
+                if (showTokensInfo) {
+                    AlertDialog(
+                        onDismissRequest = { showTokensInfo = false },
+                        title = { Text("Максимальная длина ответа") },
+                        text = {
+                            Text(
+                                "Ограничивает максимальное количество токенов " +
+                                        "в одном ответе модели. Меньше — короче и быстрее, " +
+                                        "больше — длиннее и детальнее."
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showTokensInfo = false }) {
+                                Text("Понятно")
+                            }
+                        }
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        onTemperatureChange(1.0)
+                        onMaxTokensChange(1000)
+                        onSaveSettings()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Сбросить параметры к стандартным")
+                }
+            }
         }
     }
 }
