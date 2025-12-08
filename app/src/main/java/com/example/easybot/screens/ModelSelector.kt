@@ -31,7 +31,7 @@ fun ModelSelector(
             value = selectedModel ?: "",
             onValueChange = { },             // только выбор из списка
             readOnly = true,
-            label = { Text("Выберите модель") },
+
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded)
             },

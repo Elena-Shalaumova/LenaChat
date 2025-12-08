@@ -72,6 +72,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.material.icons.filled.StopCircle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.text.style.TextOverflow
 
 
 
@@ -852,11 +853,10 @@ fun AppHeader(
             .background(Color.White)
             .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp)
     ) {
-        // --- Стейт для меню настроек и меню чата ---
         var settingsExpanded by remember { mutableStateOf(false) }
         var menuExpanded by remember { mutableStateOf(false) }
 
-        // --------- ЛОГО + НАЗВАНИЕ + ИКОНКИ СПРАВА ---------
+        // ---------- верхняя строка ----------
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -870,16 +870,46 @@ fun AppHeader(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // название чата
-            Text(
-                text = title,
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
-            )
+            // название чата + выбор модели
+            if (models.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = title,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
 
-            // иконка "настройки ответа" (температура, токены)
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // компактный дропдаун модели
+                    ModelSelector(
+                        models = models,
+                        selectedModel = selectedModel,
+                        onModelSelected = onModelSelected,
+                        modifier = Modifier
+                            .widthIn(min = 120.dp, max = 170.dp)   // уже
+                    )
+                }
+            } else {
+                Text(
+                    text = title,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // кнопка настроек ответа (температура/токены)
             IconButton(onClick = { settingsExpanded = true }) {
                 Icon(
                     imageVector = Icons.Default.Settings,
@@ -888,7 +918,7 @@ fun AppHeader(
                 )
             }
 
-            // меню из трёх точек
+            // меню чата (очистить / переименовать)
             IconButton(onClick = { menuExpanded = true }) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
@@ -918,19 +948,7 @@ fun AppHeader(
             }
         }
 
-        // --------- ВЫБОР МОДЕЛИ (ВСЕГДА ВИДЕН) ---------
-        if (models.isNotEmpty()) {
-            Spacer(Modifier.height(12.dp))
-
-            ModelSelector(
-                models = models,
-                selectedModel = selectedModel,
-                onModelSelected = onModelSelected,
-                modifier = Modifier.fillMaxWidth(0.85f)   // чуть короче, как хотели
-            )
-        }
-
-        // --------- DROPDOWN С ТЕМПЕРАТУРОЙ И ТОКЕНАМИ ---------
+        // ---------- выпадающее меню с температурой и токенами ----------
         DropdownMenu(
             expanded = settingsExpanded,
             onDismissRequest = { settingsExpanded = false },
