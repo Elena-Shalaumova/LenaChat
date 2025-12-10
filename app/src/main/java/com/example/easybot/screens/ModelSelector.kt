@@ -10,6 +10,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.font.FontWeight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -18,8 +20,9 @@ fun ModelSelector(
     selectedModel: String?,
     onModelSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
+    includeExtraContent: Boolean = false,
     // если вдруг ещё где-то используешь
-    extraContent: @Composable ColumnScope.() -> Unit = {}
+    extraContent: @Composable ColumnScope.() -> Unit = {},
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -38,6 +41,7 @@ fun ModelSelector(
             modifier = Modifier
                 .menuAnchor()
                 .fillMaxWidth(),
+            textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             // 🔹 делаем фон именно белым, без сиреневого
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.White,
@@ -45,13 +49,13 @@ fun ModelSelector(
                 disabledContainerColor = Color.White,
                 errorContainerColor = Color.White,
 
-                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
-                disabledIndicatorColor = MaterialTheme.colorScheme.outline,
-                errorIndicatorColor = MaterialTheme.colorScheme.error,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent,
+                errorIndicatorColor = Color.Transparent,
 
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
                 disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 cursorColor = MaterialTheme.colorScheme.primary
             )
@@ -59,7 +63,8 @@ fun ModelSelector(
 
         ExposedDropdownMenu(
             expanded = isExpanded,
-            onDismissRequest = { isExpanded = false }
+            onDismissRequest = { isExpanded = false },
+            shape = RoundedCornerShape(12.dp)
         ) {
             models.forEach { model ->
                 DropdownMenuItem(
@@ -71,17 +76,28 @@ fun ModelSelector(
                 )
             }
 
-            // если хочешь убрать блок extraContent из меню – просто закомментируй всё ниже
-            Divider(
-                color = MaterialTheme.colorScheme.primary,
-                thickness = 1.dp
-            )
+//            // если хочешь убрать блок extraContent из меню – просто закомментируй всё ниже
+//            Divider(
+//                color = MaterialTheme.colorScheme.primary,
+//                thickness = 1.dp
+//            )
+            if (includeExtraContent) {
+                Divider(
+                    color = MaterialTheme.colorScheme.primary,
+                    thickness = 1.dp
+                )
 
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Spacer(Modifier.height(8.dp))
-                extraContent()
+//            Column(
+//                modifier = Modifier.fillMaxWidth()
+//            ) {
+//                Spacer(Modifier.height(8.dp))
+//                extraContent()
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Spacer(Modifier.height(1.dp))
+                    extraContent()
+                }
             }
         }
     }

@@ -73,6 +73,7 @@ import androidx.compose.material.icons.filled.StopCircle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 
 
 
@@ -299,7 +300,8 @@ fun ChatPage(
             }
         }
 
-    Column(modifier = modifier.fillMaxSize().background(Color(0xFFF2F4F7))
+    Column(modifier = modifier.fillMaxSize().background(Color(0xFFF2F4F7)) // серый
+
     ) {
 
         AppHeader(
@@ -541,8 +543,8 @@ fun MessageBubble(message: MessageModel) {
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
                 .background(
-                    if (isUserMessage) MaterialTheme.colorScheme.secondaryContainer
-                    else MaterialTheme.colorScheme.surfaceVariant
+                    if (isUserMessage) UserMessageBlue   // голубой для пользователя
+                    else ModelMessageGrey               // потемнее для модели
                 )
                 .padding(12.dp)
         ) {
@@ -847,6 +849,7 @@ fun AppHeader(
     onSaveSettings: () -> Unit = {},
     onRenameChat: () -> Unit = {}
 ) {
+    val headerTextStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -879,8 +882,7 @@ fun AppHeader(
                     Text(
                         text = title,
                         color = MaterialTheme.colorScheme.onBackground,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = headerTextStyle,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
@@ -901,8 +903,7 @@ fun AppHeader(
                 Text(
                     text = title,
                     color = MaterialTheme.colorScheme.onBackground,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = headerTextStyle,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
@@ -929,7 +930,9 @@ fun AppHeader(
 
             DropdownMenu(
                 expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false }
+                onDismissRequest = { menuExpanded = false },
+                offset = DpOffset(x = 220.dp, y = 0.dp),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 DropdownMenuItem(
                     text = { Text("Очистить чат") },
