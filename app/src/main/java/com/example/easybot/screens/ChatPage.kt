@@ -865,11 +865,11 @@ fun AppHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // логотип
-            Image(
-                painter = painterResource(id = R.drawable.logo),
-                contentDescription = "Логотип",
-                modifier = Modifier.size(32.dp)
-            )
+           // Image(
+                //painter = painterResource(id = R.drawable.logo),
+               // contentDescription = "Логотип",
+               // modifier = Modifier.size(32.dp)
+           // )
 
             Spacer(modifier = Modifier.width(8.dp))
 
