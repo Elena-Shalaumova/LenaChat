@@ -31,7 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.ui.graphics.Color
-
+import androidx.compose.foundation.isSystemInDarkTheme
 @Composable
 fun ChatListScreen(
     navController: NavHostController,
@@ -40,6 +40,7 @@ fun ChatListScreen(
     val chats by viewModel.chats.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
+    val isDarkTheme = isSystemInDarkTheme()
 
     // диалог создания
     var isCreateDialogOpen by remember { mutableStateOf(false) }
@@ -78,7 +79,8 @@ fun ChatListScreen(
                 Text(
                     text = "Мои чаты",
                     style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    //color = MaterialTheme.colorScheme.primary,
+                    color = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
@@ -86,7 +88,8 @@ fun ChatListScreen(
                     Icon(
                         imageVector = Icons.Default.Settings,
                         contentDescription = "Настройки",
-                        tint = MaterialTheme.colorScheme.primary
+                        //tint = MaterialTheme.colorScheme.primary
+                        tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.primary
                     )
                 }
             }
