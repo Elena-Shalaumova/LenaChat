@@ -28,6 +28,9 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun ChatListScreen(
@@ -271,13 +274,20 @@ private fun ChatRow(
     onRename: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val editInteractionSource = remember { MutableInteractionSource() }
+    val isEditHovered by editInteractionSource.collectIsHoveredAsState()
+    val editIconColor = if (isEditHovered) MaterialTheme.colorScheme.primary else Color.White
+
+    val deleteInteractionSource = remember { MutableInteractionSource() }
+    val isDeleteHovered by deleteInteractionSource.collectIsHoveredAsState()
+    val deleteIconColor = if (isDeleteHovered) MaterialTheme.colorScheme.primary else Color.White
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onOpen() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -307,11 +317,15 @@ private fun ChatRow(
                     )
                 }
 
-                IconButton(onClick = onRename) {
+                IconButton(
+                    onClick = onRename,
+                    interactionSource = editInteractionSource,
+                    colors = IconButtonDefaults.iconButtonColors(contentColor = editIconColor)
+                )  {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Переименовать чат",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        tint = editIconColor
                     )
                 }
                 IconButton(onClick = onDelete) {
@@ -324,18 +338,6 @@ private fun ChatRow(
             }
 
             Spacer(modifier = Modifier.height(4.dp))
-
-//            if (chat.lastMessageText.isNotBlank()) {
-//                Text(
-//                    text = chat.lastMessageText,
-//                    style = MaterialTheme.typography.bodySmall,
-//                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-//                    maxLines = 1,
-//                    overflow = TextOverflow.Ellipsis
-//                )
-//
-//                Spacer(modifier = Modifier.height(4.dp))
-                //}
 
             val modelText = chat.modelName
                 ?.takeIf { it.isNotBlank() }
