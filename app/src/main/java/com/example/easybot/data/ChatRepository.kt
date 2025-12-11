@@ -1,9 +1,14 @@
 package com.example.easybot.data
 
+import android.content.Context
 import android.util.Log
 import com.example.easybot.*
 import com.example.easybot.data.mappers.toModels
 import com.example.easybot.screens.theme.MessageModel
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import java.io.File
 
 //подключение к бэку
 class ChatRepository(
@@ -30,12 +35,12 @@ class ChatRepository(
         api.clearChat(chatId)
     }
 
-    // 🔹 NEW: настройки конкретного чата (из settings_chat)
+    // настройки конкретного чата (из settings_chat)
     suspend fun getChatSettings(chatId: Int): ChatSettingsDto {
         return api.getChatSettings(chatId)
     }
 
-    // 🔹 NEW: последние сообщения по всем чатам пользователя
+    // последние сообщения по всем чатам пользователя
     suspend fun getLastMessagesForUser(): List<LastMessageDto> {
         return api.getLastMessagesForUser(getUserId())
     }
@@ -104,5 +109,96 @@ class ChatRepository(
         val response = api.sendMessage(request)
         return listOf(response.aiMessage).toModels().first()
     }
+    // ============================================================
+    //              NEW — FULL EXPORT + SAVE + MERGE
+    // ============================================================
 
+    /**
+     * Выгружает ВСЕ чаты + сообщения пользователя,
+     * сохраняет в файл user_export.json
+     * и делает M ER G E:
+     *
+     * - старые данные НЕ удаляются
+     * - новые добавляются
+     * - пропавшие на сервере записи НЕ удаляются из файла
+     */
+    suspend fun exportAndSaveUserData(context: Context) {
+        try {
+            val userId = getUserId()
+
+            // 1. получаем свежие данные с сервера
+            val newData = api.exportUserData(userId)
+
+            val file = File(context.filesDir, "user_export.json")
+
+            // Настройка Moshi
+            val moshi = Moshi.Builder()
+                .add(KotlinJsonAdapterFactory())
+                .build()
+
+            val type = Types.newParameterizedType(
+                List::class.java,
+                ExportChatDto::class.java
+            )
+
+            val adapter = moshi.adapter<List<ExportChatDto>>(type)
+
+            // 2. Если файла нет → создаём новый и записываем всё как есть
+            if (!file.exists()) {
+                file.writeText(adapter.toJson(newData))
+                return
+            }
+
+            // 3. Файл есть → читаем старые данные
+            val oldJson = file.readText()
+            val oldData = adapter.fromJson(oldJson) ?: emptyList()
+
+            // 4. МЕРДЖ
+            val merged = mergeExports(oldData, newData)
+
+            // 5. Сохраняем результат
+            file.writeText(adapter.toJson(merged))
+
+        } catch (e: Exception) {
+            Log.e("EXPORT_ERROR", "Failed to export user data", e)
+        }
+    }
+
+    /**
+     * MERGE алгоритм:
+     * - старые чаты сохраняются
+     * - новые чаты добавляются
+     * - сообщения внутри чата объединяются без дубликатов
+     */
+    private fun mergeExports(
+        oldList: List<ExportChatDto>,
+        newList: List<ExportChatDto>
+    ): List<ExportChatDto> {
+
+        val result = oldList.toMutableList()
+
+        newList.forEach { newChat ->
+            val existing = result.find { it.chatId == newChat.chatId }
+
+            if (existing == null) {
+                // Чата не было — добавляем
+                result.add(newChat)
+            } else {
+                // Чат есть → мерджим сообщения
+                val oldMsgs = existing.messages.toMutableList()
+
+                newChat.messages.forEach { msg ->
+                    if (oldMsgs.none { it.messageId == msg.messageId }) {
+                        oldMsgs.add(msg)
+                    }
+                }
+
+                existing.messages = oldMsgs.sortedBy { it.createdAt }
+            }
+        }
+
+        return result
+    }
 }
+
+

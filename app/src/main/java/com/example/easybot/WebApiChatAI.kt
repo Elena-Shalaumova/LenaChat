@@ -11,6 +11,8 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
 import kotlin.collections.List
 import com.example.easybot.UserSession
+import com.example.easybot.ExportChatDto
+import com.example.easybot.ExportMessageDto
 
 // --- DTO для настроек ---
 data class SettingsDto(val id: Int, val userId: Int, val stream: Boolean, val model: String?, val temperature: Double?, val maxTokens: Int? )
@@ -97,6 +99,12 @@ interface WebApiChatAI {
     @GET("api/Chat/user/{userId}/chats")
     suspend fun getChats(@Path("userId") userId: Int): List<ChatDto>
 
+    @GET("api/WebAPIChatAI/export/user/{userId}")
+    suspend fun exportUserData(
+        @Path("userId") userId: Int
+    ): List<ExportChatDto>
+
+
     @POST("api/Chat")
     suspend fun createChat(@Body request: CreateChatRequest): ChatDto
 
@@ -153,28 +161,6 @@ interface WebApiChatAI {
 
 
 //фабрика
-//fun provideApi(baseUrl: String = "http://192.168.3.8:5167/"): WebApiChatAI {
-//    val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
-//
-//    val log = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
-//    //val client = OkHttpClient.Builder().addInterceptor(log).build()
-//    val client = OkHttpClient.Builder()
-//        .addInterceptor(log)
-//        .connectTimeout(60, TimeUnit.SECONDS)          // подключение к серверу
-//        .writeTimeout(5, TimeUnit.MINUTES)             // загрузка текста/картинки
-//        .readTimeout(0, TimeUnit.SECONDS)              // ❗ ждать бесконечно
-//        .callTimeout(0, TimeUnit.MILLISECONDS)         // ❗ полный запрет глобального timeout
-//        .retryOnConnectionFailure(true)                // авто-повтор при обрыве соединения
-//        .build()
-//
-//    return Retrofit.Builder()
-//        .baseUrl(baseUrl)
-//        .addConverterFactory(MoshiConverterFactory.create(moshi))
-//        .client(client)
-//        .build()
-//        .create(WebApiChatAI::class.java)
-//}
-//
 fun provideApi(baseUrl: String): WebApiChatAI {
     val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
