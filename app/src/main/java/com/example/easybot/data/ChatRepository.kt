@@ -1,6 +1,7 @@
 package com.example.easybot.data
 
 import android.content.Context
+import android.os.Environment
 import android.util.Log
 import com.example.easybot.*
 import com.example.easybot.data.mappers.toModels
@@ -9,6 +10,7 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import java.io.File
+import android.widget.Toast
 
 //подключение к бэку
 class ChatRepository(
@@ -129,7 +131,12 @@ class ChatRepository(
             // 1. получаем свежие данные с сервера
             val newData = api.exportUserData(userId)
 
-            val file = File(context.filesDir, "user_export.json")
+            //val file = File(context.filesDir, "user_export.json")
+
+            val file = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                "user_export.json"
+            )
 
             // Настройка Moshi
             val moshi = Moshi.Builder()
@@ -163,6 +170,74 @@ class ChatRepository(
             Log.e("EXPORT_ERROR", "Failed to export user data", e)
         }
     }
+
+    /**
+     * Экспорт ОДНОГО чата в отдельный JSON-файл.
+     * В JSON попадает:
+     *  - объект chat (ChatDto)
+     *  - список messages (MessageDto)
+     * Имя файла = название чата (очищенное) + ".json"
+     */
+    suspend fun exportSingleChatToJson(
+        context: Context,
+        chat: ChatDto
+    ) {
+        try {
+            // 1. Получаем ВСЕ сообщения этого чата с бэка
+            val messages: List<MessageDto> = api.getMessages(chat.id)
+
+            // 2. Собираем объект для экспорта
+            val payload = SingleChatExportDto(
+                chat = chat,
+                messages = messages
+            )
+
+            // 3. Делаем безопасное имя файла из названия чата
+            val safeTitle = chat.title
+                .replace(Regex("""[\\/:*?"<>|]"""), "_")  // запрещённые символы
+                .ifBlank { "chat_${chat.id}" }           // на случай пустого названия
+
+            val fileName = "$safeTitle.json"
+
+            // 4. Папка — Downloads, чтобы было удобно забрать с ПК
+            val dir = Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS
+            )
+            if (!dir.exists()) dir.mkdirs()
+
+            val file = File(dir, fileName)
+
+            // 5. Сохраняем JSON через Moshi
+            val moshi = Moshi.Builder()
+                .add(KotlinJsonAdapterFactory())
+                .build()
+
+            val adapter = moshi.adapter(SingleChatExportDto::class.java)
+
+            file.writeText(adapter.toJson(payload))
+
+            android.util.Log.d(
+                "EXPORT_DEBUG",
+                "Один чат экспортирован в ${file.absolutePath}"
+            )
+
+            Toast.makeText(
+                context,
+                "Чат «${chat.title}» сохранён в ${fileName}",
+                Toast.LENGTH_LONG
+            ).show()
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            android.util.Log.e("EXPORT_DEBUG", "Ошибка экспорта одного чата", e)
+            Toast.makeText(
+                context,
+                "Ошибка при экспорте чата",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
 
     /**
      * MERGE алгоритм:

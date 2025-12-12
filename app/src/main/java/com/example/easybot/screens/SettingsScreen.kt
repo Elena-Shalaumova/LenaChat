@@ -22,13 +22,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.easybot.screens.ChatViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController,
     isDarkTheme: Boolean,
-    onThemeToggle: (Boolean) -> Unit
+    onThemeToggle: (Boolean) -> Unit,
+    viewModel: ChatViewModel = viewModel()
 ) {
     var apiBaseUrl by remember { mutableStateOf(UserSession.apiBaseUrl) }
     val userLogin = UserSession.login ?: "N/A"
@@ -484,6 +488,23 @@ fun SettingsScreen(
             ) {
                 Text(if (isClearingChats) "Очистка..." else "Очистить все чаты")
             }
+
+            Button(
+                onClick = {
+                    viewModel.exportAllChats(context) { success ->
+                        // Можешь что-то сделать после экспорта, если нужно
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF0096FF)
+                )
+            ) {
+                Text("Выгрузить все чаты в JSON", color = Color.White)
+            }
+
 
             Button(
                 onClick = {

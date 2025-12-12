@@ -13,6 +13,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull   // <--- ВАЖНО
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
+import android.content.Context
+import android.widget.Toast
+import androidx.lifecycle.ViewModel
+import com.example.easybot.ChatDto
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -27,6 +31,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     val isAiBusy: StateFlow<Boolean> = _isAiBusy.asStateFlow()
 
     var isIncognito: Boolean = false
+        private set
+
+    var isExporting = false
         private set
 
     // 👉 текущая корутина запроса к API
@@ -257,6 +264,58 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    fun exportAllChats(context: Context, onResult: (success: Boolean) -> Unit = {}) {
+        if (isExporting) return
+
+        isExporting = true
+        viewModelScope.launch {
+            try {
+                repository.exportAndSaveUserData(context)
+
+                // Удача
+                Toast.makeText(
+                    context,
+                    "Экспорт выполнен — смотрите user_export.json",
+                    Toast.LENGTH_LONG
+                ).show()
+
+                onResult(true)
+
+                android.util.Log.d("EXPORT_DEBUG", "Экспорт успешно завершён!")
+
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    "Ошибка экспорта: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+
+                onResult(false)
+
+                android.util.Log.e("EXPORT_DEBUG", "Ошибка экспорта", e)
+
+            } finally {
+                isExporting = false
+            }
+        }
+    }
+
+
+
+
+
+    fun exportCurrentChat(context: Context, chat: ChatDto) {
+        viewModelScope.launch {
+            repository.exportSingleChatToJson(context, chat)
+        }
+    }
+
+
+
+
+
+
 
     private fun setErrorToPlaceholder(index: Int, errorText: String) {
         val updated = _messages.value.toMutableList()

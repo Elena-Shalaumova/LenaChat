@@ -948,6 +948,7 @@ fun AppHeader(
                         onRenameChat()
                     }
                 )
+
             }
         }
 

@@ -156,6 +156,9 @@ interface WebApiChatAI {
        @Path("userId") userId: Int
    ): List<LastMessageDto>
 
+    @GET("Chat/export/{userId}")
+    suspend fun exportAllChats(@Path("userId") userId: Int): List<ExportChatDto>
+
 
 }
 
