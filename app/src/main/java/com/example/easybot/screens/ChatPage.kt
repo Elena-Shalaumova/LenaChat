@@ -75,7 +75,9 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import com.example.easybot.ChatDto
-
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
@@ -300,7 +302,8 @@ fun ChatPage(
             }
         }
 
-    Column(modifier = modifier.fillMaxSize().background(Color(0xFFF2F4F7)) // серый
+    val isDarkTheme = isSystemInDarkTheme()
+    Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
 
     ) {
 
@@ -337,32 +340,8 @@ fun ChatPage(
                 // открыть диалог, подставив текущее имя
                 newChatTitle = chatTitleState
                 isRenameDialogOpen = true
-
-            },
-            onExportChat = {
-                val uid = userId
-                if (uid == null) {
-                    Toast.makeText(
-                        context,
-                        "Пользователь не авторизован",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    return@AppHeader
-                }
-
-                val chatDto = ChatDto(
-                    id = chatId.toInt(),
-                    userId = uid,
-                    title = chatTitleState,
-                    model = selectedModel.ifBlank { null },
-                    isIncognito = isIncognito
-                )
-
-                viewModel.exportCurrentChat(context, chatDto)
             }
         )
-
-
 
         // ---------- ДИАЛОГ ПЕРЕИМЕНОВАНИЯ ЧАТА ----------
         if (isRenameDialogOpen) {
@@ -529,7 +508,7 @@ fun MessageList(
 @Composable
 fun MessageBubble(message: MessageModel) {
     val isUserMessage = message.role == 1   // 1 – пользователь, 0 – модель
-
+    val isDarkTheme = isSystemInDarkTheme()
     // считаем, что это "пишущий" бот:
     // плейсхолдер, который ты добавляешь с id = -2L и text = "..."
     val isTypingPlaceholder = (message.id == -2L && message.text == "...")
@@ -563,13 +542,20 @@ fun MessageBubble(message: MessageModel) {
             .padding(vertical = 4.dp),
         horizontalAlignment = if (isUserMessage) Alignment.End else Alignment.Start
     ) {
+        val bubbleShape = RoundedCornerShape(20.dp)
+        val borderColor = when {
+            !isDarkTheme -> Color.Transparent
+            isUserMessage -> Color(0xFF10879E)
+            else -> Color(0xFF234257)
+        }
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
+                //.clip(RoundedCornerShape(20.dp))
+                .border(BorderStroke(1.dp, borderColor), bubbleShape)
                 .background(
                     if (isUserMessage) UserMessageBlue   // голубой для пользователя
                     else ModelMessageGrey               // потемнее для модели
-                )
+                    , shape = bubbleShape)
                 .padding(12.dp)
         ) {
 
@@ -745,6 +731,7 @@ fun MessageInput(
                         onClick = {
                             if (isSendEnabled) {
                                 onMessageSend(message)
+                                message=""
                             }
                         },
                         enabled = isSendEnabled
@@ -875,10 +862,11 @@ fun AppHeader(
     onExportChat: () -> Unit = {}
 ) {
     val headerTextStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+    val isDarkTheme = isSystemInDarkTheme()
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 12.dp)
     ) {
         var settingsExpanded by remember { mutableStateOf(false) }
@@ -940,7 +928,7 @@ fun AppHeader(
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = "Настройки ответа",
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -949,7 +937,7 @@ fun AppHeader(
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = "Меню",
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.primary
                 )
             }
 

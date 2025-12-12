@@ -39,6 +39,7 @@ data class ChatSettingsDto(
 )
 
 data class ChatSettingsRequest(
+    val id: Int? = null,
     val chatId: Int,
     val model: String,
     val temperature: Double?,
@@ -146,6 +147,7 @@ interface WebApiChatAI {
     ): ChatSettingsDto
 
     @POST("/api/Chat/chat/saveChatSettings")
+    //@POST("/api/Chat/saveChatSettings")
     suspend fun saveChatSettings(
         @Body request: ChatSettingsRequest
     ): Response<ChatSettingsDto>
