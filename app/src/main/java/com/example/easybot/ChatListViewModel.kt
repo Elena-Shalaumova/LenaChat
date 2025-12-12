@@ -34,7 +34,7 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
                         title = chat.title,
                         modelName = settings.model,
                         lastMessageText = last?.text ?: "Нет сообщений",
-                        lastMessageTime = last?.createdAt,
+                        lastMessageTime = last?.createdAt?.replace("T", " "),
                         isIncognito = chat.isIncognito
                     )
                 }

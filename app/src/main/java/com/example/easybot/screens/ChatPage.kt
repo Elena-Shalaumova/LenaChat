@@ -74,7 +74,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
-
+import com.example.easybot.ChatDto
 
 
 
@@ -337,8 +337,32 @@ fun ChatPage(
                 // открыть диалог, подставив текущее имя
                 newChatTitle = chatTitleState
                 isRenameDialogOpen = true
+
+            },
+            onExportChat = {
+                val uid = userId
+                if (uid == null) {
+                    Toast.makeText(
+                        context,
+                        "Пользователь не авторизован",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@AppHeader
+                }
+
+                val chatDto = ChatDto(
+                    id = chatId.toInt(),
+                    userId = uid,
+                    title = chatTitleState,
+                    model = selectedModel.ifBlank { null },
+                    isIncognito = isIncognito
+                )
+
+                viewModel.exportCurrentChat(context, chatDto)
             }
         )
+
+
 
         // ---------- ДИАЛОГ ПЕРЕИМЕНОВАНИЯ ЧАТА ----------
         if (isRenameDialogOpen) {
@@ -847,7 +871,8 @@ fun AppHeader(
     onMaxTokensChange: (Int) -> Unit,
     onClear: () -> Unit = {},
     onSaveSettings: () -> Unit = {},
-    onRenameChat: () -> Unit = {}
+    onRenameChat: () -> Unit = {},
+    onExportChat: () -> Unit = {}
 ) {
     val headerTextStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
     Column(
@@ -919,7 +944,7 @@ fun AppHeader(
                 )
             }
 
-            // меню чата (очистить / переименовать)
+            // меню чата (очистить / переименовать/ экспортировать)
             IconButton(onClick = { menuExpanded = true }) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
@@ -946,6 +971,14 @@ fun AppHeader(
                     onClick = {
                         menuExpanded = false
                         onRenameChat()
+                    }
+                )
+
+                DropdownMenuItem(
+                    text = { Text("Выгрузить чат в JSON") },
+                    onClick = {
+                        menuExpanded = false
+                        onExportChat()
                     }
                 )
 
