@@ -799,7 +799,7 @@ fun MessageInput(
             }
         }}}
 
-            /** Bitmap -> base64 */
+/** Bitmap -> base64 */
 fun bitmapToBase64(bitmap: Bitmap): String {
     val stream = ByteArrayOutputStream()
     bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
@@ -878,11 +878,11 @@ fun AppHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // логотип
-           // Image(
-                //painter = painterResource(id = R.drawable.logo),
-               // contentDescription = "Логотип",
-               // modifier = Modifier.size(32.dp)
-           // )
+            // Image(
+            //painter = painterResource(id = R.drawable.logo),
+            // contentDescription = "Логотип",
+            // modifier = Modifier.size(32.dp)
+            // )
 
             Spacer(modifier = Modifier.width(8.dp))
 

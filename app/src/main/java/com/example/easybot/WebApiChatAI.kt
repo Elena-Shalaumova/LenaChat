@@ -136,7 +136,7 @@ interface WebApiChatAI {
 
     @POST("api/WebAPIChatAI/Login")
     suspend fun login(@Body req: LoginReq): Response<UserDto>
-    
+
     // --- Ollama (если используется через сервер) ---
     @POST("api/Ai/chat")
     suspend fun chat(@Body request: ChatRequest): ChatResponse
@@ -153,10 +153,10 @@ interface WebApiChatAI {
     ): Response<ChatSettingsDto>
 
 
-   @GET("api/WebAPIChatAI/user/{userId}/last-messages")
-   suspend fun getLastMessagesForUser(
-       @Path("userId") userId: Int
-   ): List<LastMessageDto>
+    @GET("api/WebAPIChatAI/user/{userId}/last-messages")
+    suspend fun getLastMessagesForUser(
+        @Path("userId") userId: Int
+    ): List<LastMessageDto>
 
     @GET("Chat/export/{userId}")
     suspend fun exportAllChats(@Path("userId") userId: Int): List<ExportChatDto>
