@@ -307,9 +307,57 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun exportCurrentChat(context: Context, chat: ChatDto) {
         viewModelScope.launch {
-            repository.exportSingleChatToJson(context, chat)
+         repository.exportSingleChatToJson(context, chat)
+
         }
     }
+
+//    fun exportCurrentChat(
+//        context: Context,
+//        chat: ChatDto,
+//        onResult: (success: Boolean) -> Unit = {}
+//    ) {
+//        if (isExporting) return
+//        isExporting = true
+//
+//        viewModelScope.launch {
+//            try {
+//                repository.exportSingleChatToJson(context, chat)
+//
+//                // Удача
+//                Toast.makeText(
+//                    context,
+//                    "Чат \"${chat.title}\" успешно экспортирован",
+//                    Toast.LENGTH_LONG
+//                ).show()
+//
+//                onResult(true)
+//
+//                android.util.Log.d(
+//                    "EXPORT_DEBUG",
+//                    "Экспорт чата ${chat.id} успешно завершён"
+//                )
+//            } catch (e: Exception) {
+//                Toast.makeText(
+//                    context,
+//                    "Ошибка экспорта чата: ${e.message}",
+//                    Toast.LENGTH_LONG
+//                ).show()
+//
+//                onResult(false)
+//
+//                android.util.Log.e(
+//                    "EXPORT_DEBUG",
+//                    "Ошибка экспорта чата",
+//                    e
+//                )
+//            } finally {
+//                isExporting = false
+//            }
+//        }
+//    }
+
+
 
 
 

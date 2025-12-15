@@ -340,7 +340,24 @@ fun ChatPage(
                 // открыть диалог, подставив текущее имя
                 newChatTitle = chatTitleState
                 isRenameDialogOpen = true
-            }
+            },
+            onExportChat = {
+                val uid = userId
+                if (uid == null) {
+                    Toast.makeText(context, "Пользователь не авторизован", Toast.LENGTH_SHORT).show()
+                    return@AppHeader
+                }
+
+                val chatDto = ChatDto(
+                    id = chatId.toInt(),
+                    userId = uid,
+                    title = chatTitleState,
+                    model = selectedModel.ifBlank { null },
+                    isIncognito = isIncognito
+                )
+
+                viewModel.exportCurrentChat(context, chatDto)
+            },
         )
 
         // ---------- ДИАЛОГ ПЕРЕИМЕНОВАНИЯ ЧАТА ----------
