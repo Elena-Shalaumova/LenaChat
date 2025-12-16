@@ -18,7 +18,16 @@ import com.example.easybot.ExportMessageDto
 data class SettingsDto(val id: Int, val userId: Int, val stream: Boolean, val model: String?, val temperature: Double?, val maxTokens: Int? )
 data class SettingsRequest(val id: Int, val stream: Boolean, val model: String,val temperature: Double?,val maxTokens: Int? )
 data class OllamaVersionDto(val version: String)
-data class OllamaModels(val models: List<String>)
+//data class OllamaModels(val models: List<String>)
+
+interface ApiService {
+    @GET("api/Ai/ollama-version")
+    suspend fun getOllamaVersion(): OllamaVersionDto
+
+    @GET("api/Ai/models")
+    suspend fun getModels(): List<String>
+}
+
 
 // --- DTO для чатов и сообщений ---
 data class ChatDto(val id: Int,  val userId: Int, val title: String, val model: String? = null, val isIncognito: Boolean )

@@ -25,6 +25,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.easybot.screens.ChatViewModel
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.ArrowDropDown
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,8 +47,10 @@ fun SettingsScreen(
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val api = remember { provideApi(apiBaseUrl) }
+    //val api = remember { provideApi(apiBaseUrl) }
+    val api = remember(apiBaseUrl) { provideApi(apiBaseUrl) }
     val userId = (UserSession.userId ?: 0L).toInt()
+    val scope = rememberCoroutineScope()
 
     var selectedModel by remember { mutableStateOf(UserSession.selectedModel ?: "") }
     var temperature by remember { mutableStateOf(UserSession.temperature ?: 0.7) }
@@ -54,6 +60,41 @@ fun SettingsScreen(
     var ollamaVersion by remember { mutableStateOf<String?>(null) }
     var ollamaModels by remember { mutableStateOf<List<String>>(emptyList()) }
     var ollamaError by remember { mutableStateOf<String?>(null) }
+
+    var isCheckingOllama by remember { mutableStateOf(false) }
+    var ollamaStatusText by remember { mutableStateOf<String?>(null) }
+    //var oLlamaModels by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    var modelsExpanded by remember { mutableStateOf(false) }
+
+
+    fun checkOllama(baseUrl: String) {
+        val api = provideApi(baseUrl)
+
+        scope.launch {
+            isCheckingOllama = true
+            try {
+                val version = api.getOllamaVersion().version
+                val models = api.getAvailableModels() // List<String>
+
+                ollamaModels = models
+                ollamaStatusText = "Ollama OK • v$version • моделей: ${models.size}"
+
+                if (selectedModel.isBlank() || selectedModel !in models) {
+                    selectedModel = models.firstOrNull().orEmpty()
+                    UserSession.selectedModel = selectedModel
+                }
+
+                Toast.makeText(context, "Подключение к Ollama успешно", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                ollamaStatusText = "Ollama недоступна: ${e.message}"
+                Toast.makeText(context, "Ollama недоступна", Toast.LENGTH_LONG).show()
+            } finally {
+                isCheckingOllama = false
+            }
+        }
+    }
+
 
     // ---------- загрузка данных ----------
     LaunchedEffect(userId) {
@@ -320,6 +361,36 @@ fun SettingsScreen(
                             onCheckedChange = { streamEnabled = it }
                         )
                     }
+
+
+                    Button(
+                        onClick = { checkOllama(apiBaseUrl) },
+                        enabled = !isCheckingOllama,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        if (isCheckingOllama) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text("Проверяю...")
+                        } else {
+                            Text("Проверить подключение к Ollama")
+                        }
+                    }
+                    ollamaStatusText?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+
+
                 }
             }
 
@@ -391,44 +462,111 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
-                    ExposedDropdownMenuBox(
-                        expanded = isModelDropdownExpanded,
-                        onExpandedChange = { isModelDropdownExpanded = !isModelDropdownExpanded }
-                    ) {
-                        TextField(
-                            value = selectedModel,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Выберите модель") },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(
-                                    expanded = isModelDropdownExpanded
+//                    ExposedDropdownMenuBox(
+//                        expanded = isModelDropdownExpanded,
+//                        onExpandedChange = { isModelDropdownExpanded = !isModelDropdownExpanded }
+//                    ) {
+////                        TextField(
+////                            value = selectedModel,
+////                            onValueChange = {},
+////                            readOnly = true,
+////                            label = { Text("Выберите модель") },
+//                        TextField(
+//                            value = if (selectedModel.isBlank()) "Выберите модель" else selectedModel,
+//                            onValueChange = {},
+//                            readOnly = true,
+//                            label = { Text("Выберите модель") },
+//                            trailingIcon = {
+//                                ExposedDropdownMenuDefaults.TrailingIcon(
+//                                    expanded = isModelDropdownExpanded
+//                                )
+//                            },
+//                            modifier = Modifier
+//                                .menuAnchor()
+//                                .fillMaxWidth()
+//                        )
+//                        ExposedDropdownMenu(
+//                            expanded = isModelDropdownExpanded,
+//                            onDismissRequest = { isModelDropdownExpanded = false }
+//                        ) {
+//                            ollamaModels.forEach { modelName ->
+//                                DropdownMenuItem(
+//                                    text = { Text(modelName) },
+//                                    onClick = {
+//                                        selectedModel = modelName
+//                                        UserSession.selectedModel = modelName
+//                                        isModelDropdownExpanded = false
+//                                    }
+//                                )
+//                            }
+//                        }
+//                        if (ollamaModels.isEmpty()) {
+//                            DropdownMenuItem(
+//                                text = {
+//                                    Text(
+//                                        "Список пуст. Нажмите «Проверить подключение к Ollama»",
+//                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                                    )
+//                                },
+//                                onClick = { isModelDropdownExpanded = false },
+//                                enabled = false
+//                            )
+//                        }
+//                    }
+//                }
+//            }
+
+                    var menuOpen by remember { mutableStateOf(false) }
+
+                    OutlinedTextField(
+                        value = if (selectedModel.isBlank()) "Выберите модель" else selectedModel,
+                        onValueChange = {},
+                        readOnly = true,
+                        singleLine = true,
+                        label = { Text("Выберите модель") },
+                        trailingIcon = {
+                            IconButton(onClick = { menuOpen = true }) {
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowDropDown,
+                                    contentDescription = "Открыть список"
                                 )
-                            },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = isModelDropdownExpanded,
-                            onDismissRequest = { isModelDropdownExpanded = false }
-                        ) {
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false },
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                    ) {
+                        if (ollamaModels.isEmpty()) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Список пуст. Нажмите «Проверить подключение к Ollama»",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                onClick = { menuOpen = false },
+                                enabled = false
+                            )
+                        } else {
                             ollamaModels.forEach { modelName ->
                                 DropdownMenuItem(
                                     text = { Text(modelName) },
                                     onClick = {
                                         selectedModel = modelName
                                         UserSession.selectedModel = modelName
-                                        isModelDropdownExpanded = false
+                                        menuOpen = false
                                     }
                                 )
                             }
                         }
                     }
-                }
-            }
 
-            // ------- КНОПКИ НИЗА ЭКРАНА -------
+
+                    // ------- КНОПКИ НИЗА ЭКРАНА -------
             Spacer(Modifier.height(8.dp))
 
             Button(
@@ -588,4 +726,4 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
         }
     }
-}
+}}}
