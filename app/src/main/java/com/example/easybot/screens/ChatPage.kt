@@ -80,6 +80,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 
 
+
 private fun uriToBase64(context: Context, uri: Uri): String? {
     return try {
         val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
