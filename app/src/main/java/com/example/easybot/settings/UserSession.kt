@@ -1,0 +1,15 @@
+package com.example.easybot.settings    // ВАЖНО: без .data.local, без других хвостов
+
+object UserSession {
+    var userId: Long? = null
+    var login: String? = null
+
+
+    //var apiBaseUrl: String = "http://10.16.69.80:5167/"
+    var apiBaseUrl: String = "http://10.16.69.80:5167/"
+
+    // текущая выбранная модель
+    var selectedModel: String? = null
+    var temperature: Double? = null
+    var maxTokens: Int? = null
+}
