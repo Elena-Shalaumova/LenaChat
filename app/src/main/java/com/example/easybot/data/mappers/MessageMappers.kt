@@ -1,6 +1,6 @@
 package com.example.easybot.data.mappers
 
-import com.example.easybot.screens.theme.MessageModel
+import com.example.easybot.theme.MessageModel
 import com.example.easybot.MessageDto
 
 

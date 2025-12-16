@@ -4,8 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.navigation.compose.rememberNavController
-import com.example.easybot.navigation.MyAppNavigation
-import com.example.easybot.screens.theme.EasyBotTheme
+import com.example.easybot.navigation.AppNavigation
+import com.example.easybot.theme.EasyBotTheme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
             EasyBotTheme(darkTheme = isDarkTheme, dynamicColor = false) {   // применяем наш Material3 UI kit
                 val navController = rememberNavController()
                 //MyAppNavigation(navController)
-                MyAppNavigation(
+                AppNavigation(
                     navController = navController,
                     isDarkTheme = isDarkTheme,
                     onThemeToggle = {

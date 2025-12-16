@@ -11,8 +11,7 @@ import com.example.easybot.ChatListViewModel
 import com.example.easybot.screens.*
 
 @Composable
-//fun MyAppNavigation(navController: NavHostController) {
-fun MyAppNavigation(
+fun AppNavigation(
     navController: NavHostController,
     isDarkTheme: Boolean,
     onThemeToggle: (Boolean) -> Unit

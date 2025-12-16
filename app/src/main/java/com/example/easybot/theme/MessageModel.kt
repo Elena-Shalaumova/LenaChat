@@ -1,4 +1,4 @@
-package com.example.easybot.screens.theme
+package com.example.easybot.theme
 
 // UI-модель для чата
 data class MessageModel(

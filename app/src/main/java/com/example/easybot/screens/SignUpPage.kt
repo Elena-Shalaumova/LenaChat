@@ -1,4 +1,4 @@
-package com.example.easybot.screens.theme
+package com.example.easybot.screens
 
 import android.net.Uri
 import androidx.compose.foundation.layout.*

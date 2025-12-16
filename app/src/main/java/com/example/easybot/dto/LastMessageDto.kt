@@ -1,4 +1,4 @@
-package com.example.easybot
+package com.example.easybot.dto
 
 data class LastMessageDto(
     val chatId: Int,

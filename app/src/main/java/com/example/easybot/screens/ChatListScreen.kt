@@ -6,15 +6,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -23,14 +20,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.easybot.ChatListItem
 import com.example.easybot.ChatListViewModel
+import com.example.easybot.components.ChatRow
 import com.example.easybot.navigation.Routes
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.isSystemInDarkTheme
 @Composable
 fun ChatListScreen(
@@ -270,87 +265,3 @@ fun ChatListScreen(
     }
 }
 
-@Composable
-private fun ChatRow(
-    chat: ChatListItem,
-    onOpen: () -> Unit,
-    onRename: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val editInteractionSource = remember { MutableInteractionSource() }
-    val isEditHovered by editInteractionSource.collectIsHoveredAsState()
-    val editIconColor = if (isEditHovered) MaterialTheme.colorScheme.primary else Color.White
-
-    val deleteInteractionSource = remember { MutableInteractionSource() }
-    val isDeleteHovered by deleteInteractionSource.collectIsHoveredAsState()
-    val deleteIconColor = if (isDeleteHovered) MaterialTheme.colorScheme.primary else Color.White
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onOpen() },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = chat.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                chat.lastMessageTime?.let { time ->
-                    Text(
-                        text = time,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                    )
-                }
-
-                IconButton(
-                    onClick = onRename,
-                    interactionSource = editInteractionSource,
-                    colors = IconButtonDefaults.iconButtonColors(contentColor = editIconColor)
-                )  {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Переименовать чат",
-                        tint = editIconColor
-                    )
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Удалить чат",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            val modelText = chat.modelName
-                ?.takeIf { it.isNotBlank() }
-                ?: "Модель не выбрана"
-
-            Text(
-                text = modelText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-            )
-        }
-    }
-}

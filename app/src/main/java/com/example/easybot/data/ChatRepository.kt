@@ -5,7 +5,9 @@ import android.os.Environment
 import android.util.Log
 import com.example.easybot.*
 import com.example.easybot.data.mappers.toModels
-import com.example.easybot.screens.theme.MessageModel
+import com.example.easybot.dto.ChatDto
+import com.example.easybot.dto.LastMessageDto
+import com.example.easybot.theme.MessageModel
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory

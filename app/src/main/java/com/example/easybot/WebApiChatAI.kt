@@ -1,5 +1,22 @@
 package com.example.easybot
 
+import com.example.easybot.dto.ChatDto
+import com.example.easybot.dto.ChatRequest
+import com.example.easybot.dto.ChatResponse
+import com.example.easybot.dto.ChatSettingsDto
+import com.example.easybot.dto.ChatSettingsRequest
+import com.example.easybot.dto.CreateChatRequest
+import com.example.easybot.dto.LastMessageDto
+import com.example.easybot.dto.LoginReq
+import com.example.easybot.dto.MessageDto
+import com.example.easybot.dto.OllamaVersionDto
+import com.example.easybot.dto.RegistrationDto
+import com.example.easybot.dto.RenameChatRequest
+import com.example.easybot.dto.SendImageMessageRequest
+import com.example.easybot.dto.SendMessageRequest
+import com.example.easybot.dto.SendMessageResponse
+import com.example.easybot.dto.SettingsDto
+import com.example.easybot.dto.SettingsRequest
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import retrofit2.Response
@@ -13,11 +30,6 @@ import kotlin.collections.List
 import com.example.easybot.UserSession
 import com.example.easybot.ExportChatDto
 import com.example.easybot.ExportMessageDto
-
-// --- DTO для настроек ---
-data class SettingsDto(val id: Int, val userId: Int, val stream: Boolean, val model: String?, val temperature: Double?, val maxTokens: Int? )
-data class SettingsRequest(val id: Int, val stream: Boolean, val model: String,val temperature: Double?,val maxTokens: Int? )
-data class OllamaVersionDto(val version: String)
 //data class OllamaModels(val models: List<String>)
 
 interface ApiService {
@@ -27,64 +39,6 @@ interface ApiService {
     @GET("api/Ai/models")
     suspend fun getModels(): List<String>
 }
-
-
-// --- DTO для чатов и сообщений ---
-data class ChatDto(val id: Int,  val userId: Int, val title: String, val model: String? = null, val isIncognito: Boolean )
-data class MessageDto(val id: Int,
-                      val chatId: Int,
-                      val role: Int,
-                      val type: String,
-                      val text: String?,
-                      val images: List<String>,
-                      val createdAt: String? )
-
-data class ChatSettingsDto(
-    val id: Int,            // id записи в settings_chat (можно не использовать)
-    val chatId: Int,
-    val model: String,
-    val temperature: Double?,
-    val maxTokens: Int?
-)
-
-data class ChatSettingsRequest(
-    val id: Int? = null,
-    val chatId: Int,
-    val model: String,
-    val temperature: Double?,
-    val maxTokens: Int?
-)
-
-// --- DTO для запросов ---
-data class CreateChatRequest(val title: String, val userId: Int,val isIncognito: Boolean = false)
-data class SendMessageRequest(
-    val chatId: Int,
-    val userId: Int,
-    val text: String?,        // может быть null для чистой картинки
-    val base64Images: List<String>  // СПИСОК картинок в base64
-
-)
-
-// --- DTO для ответов ---
-data class SendMessageResponse(val userMessage: MessageDto?,
-                               val aiMessage: MessageDto)
-
-// --- DTO для авторизации ---
-data class LoginReq(val login: String, val password: String)
-
-// Для общения с нейросетью
-data class ChatRequest(val message: String)
-data class ChatResponse(val answer: String)
-
-//DTO для отправки КАРТИНКИ
-data class SendImageMessageRequest(
-    val chatId: Int,
-    val userId: Int,
-    val prompt: String?,      // объект text для картинки
-    val base64Image: String   // обязательный base64
-)
-//переименовка чата
-data class RenameChatRequest(val title: String)
 
 interface WebApiChatAI {
 
@@ -141,7 +95,7 @@ interface WebApiChatAI {
     ): SendMessageResponse
 
     @POST("api/WebAPIChatAI/AddUser")
-    suspend fun addUser(@Body user: RegisterDto): Response<UserDto>
+    suspend fun addUser(@Body user: RegistrationDto): Response<UserDto>
 
     @POST("api/WebAPIChatAI/Login")
     suspend fun login(@Body req: LoginReq): Response<UserDto>

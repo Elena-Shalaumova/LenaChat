@@ -1,4 +1,4 @@
-package com.example.easybot.screens.theme
+package com.example.easybot.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

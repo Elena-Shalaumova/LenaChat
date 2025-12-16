@@ -34,9 +34,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.easybot.R
-import com.example.easybot.screens.theme.MessageModel
-import com.example.easybot.screens.theme.ModelMessageGrey
-import com.example.easybot.screens.theme.UserMessageBlue
+import com.example.easybot.theme.MessageModel
+import com.example.easybot.theme.ModelMessageGrey
+import com.example.easybot.theme.UserMessageBlue
 import java.io.ByteArrayOutputStream
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.ui.layout.ContentScale

@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.easybot.LoginReq
 import com.example.easybot.UserDto
-import com.example.easybot.RegisterDto
+import com.example.easybot.dto.RegistrationDto
 import com.example.easybot.UserSession
 import com.example.easybot.WebApiChatAI
 import com.example.easybot.provideApi
@@ -64,7 +64,7 @@ class RegistrationpageVM(private val api: WebApiChatAI = provideApi(UserSession.
         loading = true
         try {
             // Создаем простой DTO с логином и паролем
-            val registerDto = RegisterDto(login = login, password = password)
+            val registerDto = RegistrationDto(login = login, password = password)
 
             // Отправляем на сервер
             val response = api.addUser(registerDto)
