@@ -1,7 +1,7 @@
 package com.example.easybot.data.mappers
 
-import com.example.easybot.screens.theme.MessageModel
-import com.example.easybot.MessageDto
+import com.example.easybot.featurechat.model.MessageModel
+import com.example.easybot.data.remote.api.MessageDto
 
 
 // -----------------------------

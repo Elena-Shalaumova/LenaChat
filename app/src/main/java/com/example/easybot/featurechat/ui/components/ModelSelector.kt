@@ -1,4 +1,4 @@
-package com.example.easybot.screens
+package com.example.easybot.featurechat.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope

@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.navigation.compose.rememberNavController
-import com.example.easybot.navigation.MyAppNavigation
+import com.example.easybot.screens.navigation.MyAppNavigation
 import com.example.easybot.screens.theme.EasyBotTheme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
@@ -13,7 +13,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.example.easybot.data.local.ThemePreferences
-import com.example.easybot.UserSession
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

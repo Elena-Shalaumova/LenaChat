@@ -1,4 +1,4 @@
-package com.example.easybot.screens
+package com.example.easybot.featurechat.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -17,7 +17,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,58 +26,49 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.easybot.R
-import com.example.easybot.screens.theme.MessageModel
+import com.example.easybot.featurechat.model.MessageModel
 import com.example.easybot.screens.theme.ModelMessageGrey
 import com.example.easybot.screens.theme.UserMessageBlue
 import java.io.ByteArrayOutputStream
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.ui.layout.ContentScale
-import coil.compose.rememberAsyncImagePainter
-import coil.compose.AsyncImage
 import android.content.Context
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardOptions
-import com.example.easybot.SettingsRequest
-import com.example.easybot.UserSession
-import com.example.easybot.api
+import com.example.easybot.core.session.UserSession
+import com.example.easybot.data.remote.api.api
 import kotlinx.coroutines.delay
 import android.widget.Toast
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.text.input.KeyboardType
-import com.example.easybot.ChatSettingsRequest
+import com.example.easybot.data.remote.api.ChatSettingsRequest
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.ui.draw.rotate
 import androidx.compose.material.icons.filled.StopCircle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
-import com.example.easybot.ChatDto
+import com.example.easybot.data.remote.api.ChatDto
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
-
+import com.example.easybot.featurechat.vm.ChatViewModel
+import com.example.easybot.featurechat.ui.components.ModelSelector
+import retrofit2.HttpException
 
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
@@ -213,7 +203,7 @@ fun ChatPage(
             UserSession.temperature   = temperature
             UserSession.maxTokens     = maxTokens
 
-        } catch (e: retrofit2.HttpException) {
+        } catch (e: HttpException) {
             if (e.code() == 404) {
                 // записей в settings_chat ещё нет — берём глобальные
                 val userSettings = api.getSettings(id)

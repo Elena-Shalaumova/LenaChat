@@ -1,4 +1,4 @@
-package com.example.easybot.navigation
+package com.example.easybot.screens.navigation
 
 object Routes {
     const val Register = "register"

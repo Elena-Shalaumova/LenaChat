@@ -1,4 +1,4 @@
-package com.example.easybot
+package com.example.easybot.data.remote.dto
 
 data class UserDto(
     val id: Int? = null,

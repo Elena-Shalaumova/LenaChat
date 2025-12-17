@@ -1,5 +1,9 @@
-package com.example.easybot
+package com.example.easybot.data.remote.api
 
+import com.example.easybot.data.remote.dto.ExportChatDto
+import com.example.easybot.data.remote.dto.LastMessageDto
+import com.example.easybot.data.remote.dto.RegisterDto
+import com.example.easybot.data.remote.dto.UserDto
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import retrofit2.Response
@@ -10,9 +14,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
 import kotlin.collections.List
-import com.example.easybot.UserSession
-import com.example.easybot.ExportChatDto
-import com.example.easybot.ExportMessageDto
+import com.example.easybot.core.session.UserSession
 
 // --- DTO для настроек ---
 data class SettingsDto(val id: Int, val userId: Int, val stream: Boolean, val model: String?, val temperature: Double?, val maxTokens: Int? )

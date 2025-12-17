@@ -1,4 +1,4 @@
-package com.example.easybot.navigation
+package com.example.easybot.screens.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -7,7 +7,11 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.example.easybot.ChatListViewModel
+import com.example.easybot.featureauth.ui.RegistrationPage
+import com.example.easybot.featurechat.ui.ChatListScreen
+import com.example.easybot.featurechat.ui.ChatPage
+import com.example.easybot.featurechat.vm.ChatViewModel
+import com.example.easybot.featuresettings.ui.SettingsScreen
 import com.example.easybot.screens.*
 
 @Composable

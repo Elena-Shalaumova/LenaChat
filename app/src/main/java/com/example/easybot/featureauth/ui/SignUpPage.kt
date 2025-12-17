@@ -1,6 +1,5 @@
 package com.example.easybot.screens.theme
 
-import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -9,7 +8,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.easybot.navigation.Routes
 
 @Composable
 fun SignUpPage(navController: NavController) {

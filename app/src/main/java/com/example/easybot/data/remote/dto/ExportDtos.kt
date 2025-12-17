@@ -1,4 +1,7 @@
-package com.example.easybot
+package com.example.easybot.data.remote.dto
+
+import com.example.easybot.data.remote.api.ChatDto
+import com.example.easybot.data.remote.api.MessageDto
 
 data class ExportMessageDto(
     val messageId: Long,

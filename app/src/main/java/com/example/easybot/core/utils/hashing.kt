@@ -1,4 +1,4 @@
-package com.example.easybot
+package com.example.easybot.core.utils
 
 import android.util.Base64
 import java.security.SecureRandom

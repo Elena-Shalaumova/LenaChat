@@ -1,4 +1,4 @@
-package com.example.easybot.screens
+package com.example.easybot.featuresettings.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -12,22 +12,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.easybot.SettingsRequest
-import com.example.easybot.UserSession
-import com.example.easybot.provideApi
+import com.example.easybot.data.remote.api.SettingsRequest
+import com.example.easybot.core.session.UserSession
+import com.example.easybot.data.remote.api.provideApi
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-import com.example.easybot.navigation.Routes
+import com.example.easybot.screens.navigation.Routes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.easybot.screens.ChatViewModel
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.filled.ArrowDropDown
-
+import com.example.easybot.featurechat.vm.ChatViewModel
+import java.net.ConnectException
+import java.net.SocketTimeoutException
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -190,11 +191,11 @@ fun SettingsScreen(
             e.printStackTrace()
             ollamaVersion = "неизвестна"
             ollamaError = when (e) {
-                is java.net.ConnectException ->
+                is ConnectException ->
                     "❌ Ollama недоступна — сервер не отвечает"
-                is java.net.SocketTimeoutException ->
+                is SocketTimeoutException ->
                     "⏱️ Ollama не успевает отвечать"
-                is retrofit2.HttpException ->
+                is HttpException ->
                     "❌ Ошибка Ollama (код ${e.code()})"
                 else ->
                     "⚠️ Не удалось подключиться к Ollama"

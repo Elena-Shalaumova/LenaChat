@@ -1,4 +1,4 @@
-package com.example.easybot.screens
+package com.example.easybot.featurechat.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,9 +21,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.example.easybot.ChatListItem
-import com.example.easybot.ChatListViewModel
-import com.example.easybot.navigation.Routes
+import com.example.easybot.featurechat.model.ChatListItem
+import com.example.easybot.featurechat.vm.ChatListViewModel
+import com.example.easybot.screens.navigation.Routes
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.launch
