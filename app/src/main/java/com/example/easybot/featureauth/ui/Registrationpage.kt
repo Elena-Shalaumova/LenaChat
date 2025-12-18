@@ -41,11 +41,11 @@ fun RegistrationPage(
             verticalArrangement = Arrangement.Center
         ) {
             // Логотип
-           // Image(
-              //  painter = painterResource(id = R.drawable.logo),
-              //  contentDescription = "App Logo",
-              //  modifier = Modifier.size(120.dp)
-           // )
+//            Image(
+//                painter = painterResource(id = R.drawable.logo),
+//                contentDescription = "App Logo",
+//                modifier = Modifier.size(120.dp)
+//            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -157,4 +157,7 @@ fun RegistrationPage(
                     text = "Регистрация",
                     style = MaterialTheme.typography.bodyMedium,
                 )
-            } }}}
+            }
+        }
+    }
+}

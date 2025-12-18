@@ -69,7 +69,8 @@ import androidx.compose.foundation.border
 import com.example.easybot.featurechat.vm.ChatViewModel
 import com.example.easybot.featurechat.ui.components.ModelSelector
 import retrofit2.HttpException
-
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
     return try {
@@ -448,6 +449,7 @@ fun ChatPage(
             onStopGeneration = {
                 viewModel.stopGeneration()
             }
+
         )
     }
 }
@@ -638,6 +640,7 @@ fun MessageInput(
 ) {
     var message by remember { mutableStateOf("") }
     var showAttachments by remember { mutableStateOf(false) }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Column(
         modifier = Modifier
@@ -693,7 +696,17 @@ fun MessageInput(
                     singleLine = false,
                     maxLines = 5,
                     keyboardOptions = KeyboardOptions.Default.copy(
-                        imeAction = ImeAction.Default
+                        imeAction = ImeAction.Send
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onSend = {
+                            val trimmed = message.trim()
+                            if (trimmed.isNotEmpty() || hasAttachment) {
+                                onMessageSend(trimmed)
+                                message = ""
+                                keyboardController?.hide()
+                            }
+                        }
                     ),
                     modifier = Modifier
                         .weight(1f)
