@@ -277,13 +277,10 @@ private fun ChatRow(
     onRename: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val editInteractionSource = remember { MutableInteractionSource() }
-    val isEditHovered by editInteractionSource.collectIsHoveredAsState()
-    val editIconColor = if (isEditHovered) MaterialTheme.colorScheme.primary else Color.White
+    val isDarkTheme = isSystemInDarkTheme()
+    val editIconColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.primary
+    val deleteIconColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
 
-    val deleteInteractionSource = remember { MutableInteractionSource() }
-    val isDeleteHovered by deleteInteractionSource.collectIsHoveredAsState()
-    val deleteIconColor = if (isDeleteHovered) MaterialTheme.colorScheme.primary else Color.White
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -321,9 +318,7 @@ private fun ChatRow(
                 }
 
                 IconButton(
-                    onClick = onRename,
-                    interactionSource = editInteractionSource,
-                    colors = IconButtonDefaults.iconButtonColors(contentColor = editIconColor)
+                    onClick = onRename
                 )  {
                     Icon(
                         imageVector = Icons.Default.Edit,
@@ -335,7 +330,7 @@ private fun ChatRow(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Удалить чат",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        tint = deleteIconColor
                     )
                 }
             }

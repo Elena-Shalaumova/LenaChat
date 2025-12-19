@@ -560,14 +560,19 @@ fun MessageBubble(message: MessageModel) {
             isUserMessage -> Color(0xFF0000A0) // Dark blue for user messages in dark theme
             else -> Color.Black // Black for model messages in dark theme
         }
+        
+        val bubbleColor = when {
+            isDarkTheme && isUserMessage -> Color(0xFF0D47A1) // Dark blue (PrimaryBlue-ish)
+            isDarkTheme && !isUserMessage -> Color(0xFF1B2B3E) // Slightly lighter dark blue for model
+            isUserMessage -> UserMessageBlue
+            else -> ModelMessageGrey
+        }
+
         Box(
             modifier = Modifier
                 //.clip(RoundedCornerShape(20.dp))
                 .border(BorderStroke(1.dp, borderColor), bubbleShape)
-                .background(
-                    if (isUserMessage) UserMessageBlue   // голубой для пользователя
-                    else ModelMessageGrey               // потемнее для модели
-                    , shape = bubbleShape)
+                .background(bubbleColor, shape = bubbleShape)
                 .padding(12.dp)
         ) {
 
@@ -578,7 +583,9 @@ fun MessageBubble(message: MessageModel) {
                         Text(
                             text = visibleText,
                             fontWeight = FontWeight.W500,
-                            color = if (isUserMessage) {
+                            color = if (isDarkTheme) {
+                                Color.White
+                            } else if (isUserMessage) {
                                 MaterialTheme.colorScheme.onSecondaryContainer
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
