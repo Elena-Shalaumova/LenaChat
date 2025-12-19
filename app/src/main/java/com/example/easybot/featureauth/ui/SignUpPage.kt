@@ -66,26 +66,6 @@ fun SignUpPage(navController: NavController) {
             Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
         }
 
-//        Button(
-//            onClick = {
-//                when {
-//                    login.isBlank() || password.isBlank() || confirm.isBlank() ->
-//                        error = "Заполните все поля"
-//                    password != confirm ->
-//                        error = "Пароли не совпадают"
-//                    else -> {
-//                        val encoded = Uri.encode(login)
-//                        navController.navigate("${Routes.Chat}/$encoded") {
-//                            popUpTo(Routes.SignIn) { inclusive = true }
-//                        }
-//                    }
-//                }
-//            },
-//            enabled = login.isNotBlank() && password.isNotBlank() && confirm.isNotBlank(),
-//            modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-//        ) {
-//            Text("Sign up")
-//        }
 
         TextButton(
             onClick = { navController.popBackStack() },

@@ -42,12 +42,13 @@ fun ModelSelector(
                 .menuAnchor()
                 .fillMaxWidth(),
             textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            // 🔹 делаем фон именно белым, без сиреневого
+
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                disabledContainerColor = Color.White,
-                errorContainerColor = Color.White,
+
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent,
+                errorContainerColor = Color.Transparent,
 
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
@@ -76,22 +77,12 @@ fun ModelSelector(
                 )
             }
 
-//            // если хочешь убрать блок extraContent из меню – просто закомментируй всё ниже
-//            Divider(
-//                color = MaterialTheme.colorScheme.primary,
-//                thickness = 1.dp
-//            )
             if (includeExtraContent) {
                 Divider(
                     color = MaterialTheme.colorScheme.primary,
                     thickness = 1.dp
                 )
 
-//            Column(
-//                modifier = Modifier.fillMaxWidth()
-//            ) {
-//                Spacer(Modifier.height(8.dp))
-//                extraContent()
                 Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {

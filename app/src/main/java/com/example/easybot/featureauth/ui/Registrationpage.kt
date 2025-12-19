@@ -24,6 +24,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.graphics.Color
 import com.example.easybot.featureauth.vm.RegistrationpageVM
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.example.easybot.R
 
 
 @Composable
@@ -41,11 +44,11 @@ fun RegistrationPage(
             verticalArrangement = Arrangement.Center
         ) {
             // Логотип
-//            Image(
-//                painter = painterResource(id = R.drawable.logo),
-//                contentDescription = "App Logo",
-//                modifier = Modifier.size(120.dp)
-//            )
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "App Logo",
+                modifier = Modifier.size(120.dp)
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 

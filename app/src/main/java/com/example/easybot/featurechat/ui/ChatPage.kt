@@ -71,6 +71,8 @@ import com.example.easybot.featurechat.ui.components.ModelSelector
 import retrofit2.HttpException
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
+import com.example.easybot.R
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
     return try {
@@ -555,8 +557,8 @@ fun MessageBubble(message: MessageModel) {
         val bubbleShape = RoundedCornerShape(20.dp)
         val borderColor = when {
             !isDarkTheme -> Color.Transparent
-            isUserMessage -> Color(0xFF10879E)
-            else -> Color(0xFF234257)
+            isUserMessage -> Color(0xFF0000A0) // Dark blue for user messages in dark theme
+            else -> Color.Black // Black for model messages in dark theme
         }
         Box(
             modifier = Modifier
@@ -899,11 +901,11 @@ fun AppHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // логотип
-            // Image(
-            //painter = painterResource(id = R.drawable.logo),
-            // contentDescription = "Логотип",
-            // modifier = Modifier.size(32.dp)
-            // )
+            Image(
+            painter = painterResource(id = R.drawable.logo),
+            contentDescription = "Логотип",
+            modifier = Modifier.size(32.dp)
+            )
 
             Spacer(modifier = Modifier.width(8.dp))
 
@@ -1008,7 +1010,7 @@ fun AppHeader(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "Температура: ${"%.2f".format(temperature)}",
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.W500,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { showTempInfo = true }) {
@@ -1032,7 +1034,7 @@ fun AppHeader(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "Максимальная длина ответа (токены)",
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.W500,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { showTokensInfo = true }) {
