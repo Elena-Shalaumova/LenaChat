@@ -19,7 +19,8 @@ fun MyAppNavigation(
     navController: NavHostController,
     isDarkTheme: Boolean,
     onThemeToggle: (Boolean) -> Unit,
-    isAuthorized: Boolean
+    //isAuthorized: Boolean,
+    authState: Boolean?
 ) {
     NavHost(
         navController = navController,
@@ -28,7 +29,8 @@ fun MyAppNavigation(
         composable(Routes.Root) {
             RootScreen(
                 navController = navController,
-                isAuthorized = isAuthorized
+                //isAuthorized = isAuthorized,
+                authState = authState
             )
         }
 

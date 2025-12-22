@@ -1,33 +1,37 @@
 package com.example.easybot.featureauth.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.easybot.core.session.UserSession
-import com.example.easybot.screens.navigation.Routes
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.ui.graphics.Color
-import com.example.easybot.featureauth.vm.RegistrationpageVM
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
 import com.example.easybot.R
-
+import com.example.easybot.core.session.UserSession
+import com.example.easybot.data.auth.AuthDataStore
+import com.example.easybot.data.repository.AuthRepository
+import com.example.easybot.featureauth.vm.RegistrationpageVM
+import com.example.easybot.screens.navigation.Routes
+import kotlinx.coroutines.launch
 
 @Composable
 fun RegistrationPage(
@@ -35,6 +39,13 @@ fun RegistrationPage(
     vm: RegistrationpageVM = viewModel()
 ) {
     val context = LocalContext.current
+
+    val authRepository = remember {
+        AuthRepository(AuthDataStore(context.applicationContext))
+    }
+
+    val coroutineScope = rememberCoroutineScope()
+
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
@@ -43,7 +54,6 @@ fun RegistrationPage(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Логотип
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = "App Logo",
@@ -58,7 +68,6 @@ fun RegistrationPage(
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
-
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -96,12 +105,9 @@ fun RegistrationPage(
 
             Spacer(modifier = Modifier.height(22.dp))
 
-            // Кнопка входа
             Button(
                 onClick = {
                     vm.signIn { user ->
-
-                        // 🔥 Уведомление про автосмену модели
                         if (user.modelChanged) {
                             Toast.makeText(
                                 context,
@@ -112,8 +118,18 @@ fun RegistrationPage(
 
                         UserSession.userId = user.id?.toLong()
                         UserSession.login = user.login
+
+                        // ✅ Сохраняем авторизацию в DataStore (suspend -> через coroutine)
+                        val id = user.id
+                        if (id != null) {
+                            coroutineScope.launch {
+                                authRepository.saveLogin(id)
+                            }
+                        }
+
                         nav.navigate(Routes.ChatList) {
                             popUpTo(Routes.Register) { inclusive = true }
+                            launchSingleTop = true
                         }
                     }
                 },
@@ -130,19 +146,28 @@ fun RegistrationPage(
             OutlinedButton(
                 onClick = {
                     vm.signUp { user ->
-
                         if (user.modelChanged) {
                             Toast.makeText(
                                 context,
                                 "Модель поменялась автоматически на актуальную: ${user.model ?: "неизвестно"}",
-                                Toast.LENGTH_LONG,
+                                Toast.LENGTH_LONG
                             ).show()
                         }
 
                         UserSession.userId = user.id?.toLong()
                         UserSession.login = user.login
+
+                        // ✅ Сохраняем авторизацию в DataStore (suspend -> через coroutine)
+                        val id = user.id
+                        if (id != null) {
+                            coroutineScope.launch {
+                                authRepository.saveLogin(id)
+                            }
+                        }
+
                         nav.navigate(Routes.ChatList) {
                             popUpTo(Routes.Register) { inclusive = true }
+                            launchSingleTop = true
                         }
                     }
                 },
@@ -158,7 +183,7 @@ fun RegistrationPage(
             ) {
                 Text(
                     text = "Регистрация",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
