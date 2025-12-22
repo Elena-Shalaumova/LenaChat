@@ -15,16 +15,23 @@ import com.example.easybot.featuresettings.ui.SettingsScreen
 import com.example.easybot.screens.*
 
 @Composable
-//fun MyAppNavigation(navController: NavHostController) {
 fun MyAppNavigation(
     navController: NavHostController,
     isDarkTheme: Boolean,
-    onThemeToggle: (Boolean) -> Unit
+    onThemeToggle: (Boolean) -> Unit,
+    isAuthorized: Boolean
 ) {
     NavHost(
         navController = navController,
-        startDestination = Routes.Register
+        startDestination = Routes.Root
     ) {
+        composable(Routes.Root) {
+            RootScreen(
+                navController = navController,
+                isAuthorized = isAuthorized
+            )
+        }
+
         composable(Routes.Register) {
             RegistrationPage(nav = navController)
         }
@@ -34,7 +41,6 @@ fun MyAppNavigation(
         }
 
         composable(Routes.Settings) {
-            //SettingsScreen(navController = navController)
             SettingsScreen(
                 navController = navController,
                 isDarkTheme = isDarkTheme,
@@ -49,9 +55,9 @@ fun MyAppNavigation(
         composable(
             route = Routes.Chat, // "chat/{chatId}/{chatTitle}/{incognitoFlag}"
             arguments = listOf(
-                navArgument("chatId")       { type = NavType.LongType   },
-                navArgument("chatTitle")    { type = NavType.StringType },
-                navArgument("incognitoFlag"){ type = NavType.IntType; defaultValue = 0 }
+                navArgument("chatId") { type = NavType.LongType },
+                navArgument("chatTitle") { type = NavType.StringType },
+                navArgument("incognitoFlag") { type = NavType.IntType; defaultValue = 0 }
             )
         ) { backStackEntry ->
 

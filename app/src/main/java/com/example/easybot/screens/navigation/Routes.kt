@@ -11,4 +11,7 @@ object Routes {
 
     const val Help = "help"
     const val Chat = "chat/{chatId}/{chatTitle}/{incognitoFlag}"
+
+    const val Root = "root"
+
 }
