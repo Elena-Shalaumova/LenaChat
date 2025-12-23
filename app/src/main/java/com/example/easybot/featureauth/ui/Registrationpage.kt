@@ -25,16 +25,23 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.graphics.Color
 import com.example.easybot.featureauth.vm.RegistrationpageVM
 import androidx.compose.foundation.Image
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.painterResource
 import com.example.easybot.R
+import com.example.easybot.data.local.AuthStorage
+import kotlinx.coroutines.launch
 
 
 @Composable
 fun RegistrationPage(
     nav: NavController,
-    vm: RegistrationpageVM = viewModel()
+    vm: RegistrationpageVM = viewModel(),
+    authStorage: AuthStorage = AuthStorage(LocalContext.current)
 ) {
     val context = LocalContext.current
+    val authStorage = remember { AuthStorage(context) }
+    val coroutineScope = rememberCoroutineScope()
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
@@ -100,7 +107,14 @@ fun RegistrationPage(
             Button(
                 onClick = {
                     vm.signIn { user ->
-
+                        val userId = user.id
+                        if (userId == null) {
+                            vm.error = "Сервер вернул пользователя без id"
+                            return@signIn
+                        }
+                        coroutineScope.launch {
+                            authStorage.saveAuth(userId = user.id)
+                        }
                         // 🔥 Уведомление про автосмену модели
                         if (user.modelChanged) {
                             Toast.makeText(

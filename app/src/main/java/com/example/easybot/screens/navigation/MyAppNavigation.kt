@@ -18,12 +18,13 @@ import com.example.easybot.screens.*
 //fun MyAppNavigation(navController: NavHostController) {
 fun MyAppNavigation(
     navController: NavHostController,
+    startDestination: String,
     isDarkTheme: Boolean,
     onThemeToggle: (Boolean) -> Unit
 ) {
     NavHost(
         navController = navController,
-        startDestination = Routes.Register
+        startDestination = startDestination
     ) {
         composable(Routes.Register) {
             RegistrationPage(nav = navController)
