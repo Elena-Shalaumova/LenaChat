@@ -113,7 +113,11 @@ fun RegistrationPage(
                             return@signIn
                         }
                         coroutineScope.launch {
-                            authStorage.saveAuth(userId = user.id)
+                            //authStorage.saveAuth(userId = user.id)
+                            authStorage.saveAuth(
+                                userId = user.id,
+                                login = user.login
+                            )
                         }
                         // 🔥 Уведомление про автосмену модели
                         if (user.modelChanged) {
@@ -145,6 +149,18 @@ fun RegistrationPage(
                 onClick = {
                     vm.signUp { user ->
 
+                        val userId = user.id
+                        if (userId == null) {
+                            vm.error = "Сервер вернул пользователя без id"
+                            return@signUp
+                        }
+
+                        coroutineScope.launch {
+                            authStorage.saveAuth(
+                                userId = userId,
+                                login = user.login
+                            )
+                        }
                         if (user.modelChanged) {
                             Toast.makeText(
                                 context,
