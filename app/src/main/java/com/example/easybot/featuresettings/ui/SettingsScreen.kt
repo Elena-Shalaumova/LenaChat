@@ -29,6 +29,12 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import com.example.easybot.featurechat.vm.ChatViewModel
 import java.net.ConnectException
 import java.net.SocketTimeoutException
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
+import com.example.easybot.data.local.AuthStorage
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,6 +45,9 @@ fun SettingsScreen(
     onThemeToggle: (Boolean) -> Unit,
     viewModel: ChatViewModel = viewModel()
 ) {
+
+    var isLoggingOut by remember { mutableStateOf(false) }
+
     var apiBaseUrl by remember { mutableStateOf(UserSession.apiBaseUrl) }
     val userLogin = UserSession.login ?: "N/A"
 
@@ -50,6 +59,7 @@ fun SettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     //val api = remember { provideApi(apiBaseUrl) }
     val api = remember(apiBaseUrl) { provideApi(apiBaseUrl) }
+    val authStorage = remember { AuthStorage(context) }
     val userId = (UserSession.userId ?: 0L).toInt()
     val scope = rememberCoroutineScope()
 
@@ -712,6 +722,41 @@ fun SettingsScreen(
             ) {
                 Text(if (isLoading) "Сохранение..." else "Сохранить")
             }
+
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                isLoggingOut = true
+                                try {
+                                    authStorage.clear()
+                                    UserSession.userId = null
+                                    UserSession.login = null
+                                    UserSession.selectedModel = null
+                                    UserSession.temperature = null
+                                    UserSession.maxTokens = null
+
+                                    navController.navigate(Routes.Register) {
+                                        popUpTo(navController.graph.startDestinationId) {
+                                            inclusive = true
+                                        }
+                                        launchSingleTop = true
+                                    }
+                                } finally {
+                                    isLoggingOut = false
+                                }
+                            }
+                        },
+                        enabled = !isLoggingOut,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                            disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+                        ),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Text(if (isLoggingOut) "Выход..." else "Выход из аккаунта")
+                    }
 
             TextButton(
                 onClick = { navController.navigate(Routes.Help) },

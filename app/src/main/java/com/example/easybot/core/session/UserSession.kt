@@ -12,4 +12,5 @@ object UserSession {
     var selectedModel: String? = null
     var temperature: Double? = null
     var maxTokens: Int? = null
+
 }
