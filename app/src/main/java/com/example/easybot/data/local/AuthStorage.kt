@@ -18,6 +18,12 @@ data class AuthSession(
     val token: String?
 )
 
+data class StoredAccount(
+    val userId: Int,
+    val login: String
+)
+
+
 class AuthStorage(private val context: Context) {
 
     private object Keys {
@@ -25,6 +31,7 @@ class AuthStorage(private val context: Context) {
         val USER_ID = intPreferencesKey("user_id")
         val TOKEN = stringPreferencesKey("token")
         val LOGIN = stringPreferencesKey("login")
+        val ACCOUNTS = stringPreferencesKey("accounts")
     }
 
     // Твои текущие флоу оставляем (они полезны)
@@ -51,6 +58,18 @@ class AuthStorage(private val context: Context) {
             )
         }
 
+    val accountsFlow: Flow<List<StoredAccount>> =
+        context.authDataStore.data.map { prefs ->
+            prefs[Keys.ACCOUNTS]
+                ?.split("|")
+                ?.mapNotNull { raw ->
+                    val parts = raw.split(":", limit = 2)
+                    val id = parts.getOrNull(0)?.toIntOrNull()
+                    val login = parts.getOrNull(1)
+                    if (id != null && !login.isNullOrBlank()) StoredAccount(id, login) else null
+                }
+                ?: emptyList()
+        }
     suspend fun saveAuth(
         userId: Int,
         token: String? = null,
@@ -62,6 +81,17 @@ class AuthStorage(private val context: Context) {
 
             if (token != null) prefs[Keys.TOKEN] = token else prefs.remove(Keys.TOKEN)
             if (login != null) prefs[Keys.LOGIN] = login else prefs.remove(Keys.LOGIN)
+
+            val current = prefs[Keys.ACCOUNTS]
+                ?.split("|")
+                ?.toMutableSet()
+                ?: mutableSetOf()
+
+            if (login != null) {
+                current.removeAll { it.startsWith("$userId:") }
+                current.add("$userId:$login")
+                prefs[Keys.ACCOUNTS] = current.joinToString(separator = "|")
+            }
         }
     }
 
@@ -77,7 +107,23 @@ class AuthStorage(private val context: Context) {
             if (token.isNullOrBlank()) prefs.remove(Keys.TOKEN) else prefs[Keys.TOKEN] = token
         }
     }
+    suspend fun setActiveAccount(account: StoredAccount) {
+        context.authDataStore.edit { prefs ->
+            prefs[Keys.IS_AUTHORIZED] = true
+            prefs[Keys.USER_ID] = account.userId
+            prefs[Keys.LOGIN] = account.login
+            prefs.remove(Keys.TOKEN)
+        }
+    }
 
+    suspend fun clearSession() {
+        context.authDataStore.edit { prefs ->
+            prefs[Keys.IS_AUTHORIZED] = false
+            prefs.remove(Keys.USER_ID)
+            prefs.remove(Keys.TOKEN)
+            prefs.remove(Keys.LOGIN)
+        }
+    }
     suspend fun clear() {
         context.authDataStore.edit { prefs -> prefs.clear() }
     }

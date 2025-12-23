@@ -30,11 +30,31 @@ import com.example.easybot.featurechat.vm.ChatViewModel
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalContext
-import kotlinx.coroutines.launch
 import com.example.easybot.data.local.AuthStorage
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,6 +67,7 @@ fun SettingsScreen(
 ) {
 
     var isLoggingOut by remember { mutableStateOf(false) }
+    var isSwitchingAccount by remember { mutableStateOf(false) }
 
     var apiBaseUrl by remember { mutableStateOf(UserSession.apiBaseUrl) }
     val userLogin = UserSession.login ?: "N/A"
@@ -63,6 +84,11 @@ fun SettingsScreen(
     val userId = (UserSession.userId ?: 0L).toInt()
     val scope = rememberCoroutineScope()
 
+    val accounts by authStorage.accountsFlow.collectAsState(initial = emptyList())
+    var selectedAccountId by remember { mutableStateOf(UserSession.userId?.toInt()) }
+    var isAccountDropdownExpanded by remember { mutableStateOf(false) }
+
+
     var selectedModel by remember { mutableStateOf(UserSession.selectedModel ?: "") }
     var temperature by remember { mutableStateOf(UserSession.temperature ?: 0.7) }
     var maxTokens by remember { mutableStateOf(UserSession.maxTokens ?: 1024) }
@@ -78,6 +104,11 @@ fun SettingsScreen(
 
     var modelsExpanded by remember { mutableStateOf(false) }
 
+    LaunchedEffect(accounts) {
+        if (selectedAccountId == null && accounts.isNotEmpty()) {
+            selectedAccountId = accounts.first().userId
+        }
+    }
 
     fun checkOllama(baseUrl: String) {
         val api = provideApi(baseUrl)
@@ -255,10 +286,10 @@ fun SettingsScreen(
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Логин",
+                        text = "Текущий аккаунт",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -267,6 +298,85 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
+
+                    if (accounts.isNotEmpty()) {
+                        ExposedDropdownMenuBox(
+                            expanded = isAccountDropdownExpanded,
+                            onExpandedChange = { isAccountDropdownExpanded = !isAccountDropdownExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = accounts.firstOrNull { it.userId == selectedAccountId }?.login
+                                    ?: userLogin,
+                                onValueChange = {},
+                                readOnly = true,
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth(),
+                                label = { Text("Выбрать другой аккаунт") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(
+                                        expanded = isAccountDropdownExpanded
+                                    )
+                                },
+                                supportingText = {
+                                    Text("Список аккаунтов из прошлых входов")
+                                }
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = isAccountDropdownExpanded,
+                                onDismissRequest = { isAccountDropdownExpanded = false }
+                            ) {
+                                accounts.forEach { account ->
+                                    DropdownMenuItem(
+                                        text = { Text(account.login) },
+                                        onClick = {
+                                            selectedAccountId = account.userId
+                                            isAccountDropdownExpanded = false
+                                        },
+                                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                    )
+                                }
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                val target = accounts.firstOrNull { it.userId == selectedAccountId }
+                                if (target != null) {
+                                    coroutineScope.launch {
+                                        isSwitchingAccount = true
+                                        try {
+                                            authStorage.setActiveAccount(target)
+                                            UserSession.userId = target.userId.toLong()
+                                            UserSession.login = target.login
+                                            navController.navigate(Routes.ChatList) {
+                                                popUpTo(navController.graph.startDestinationId) {
+                                                    inclusive = true
+                                                }
+                                                launchSingleTop = true
+                                            }
+                                        } finally {
+                                            isSwitchingAccount = false
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = !isSwitchingAccount &&
+                                    selectedAccountId != null &&
+                                    selectedAccountId != UserSession.userId?.toInt(),
+                            shape = RoundedCornerShape(24.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(if (isSwitchingAccount) "Переключаюсь..." else "Переключить аккаунт")
+                        }
+                    } else {
+                        Text(
+                            text = "Ранее использованные аккаунты появятся здесь после входа.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
@@ -722,13 +832,12 @@ fun SettingsScreen(
             ) {
                 Text(if (isLoading) "Сохранение..." else "Сохранить")
             }
-
                     Button(
                         onClick = {
                             coroutineScope.launch {
                                 isLoggingOut = true
                                 try {
-                                    authStorage.clear()
+                                    authStorage.clearSession()
                                     UserSession.userId = null
                                     UserSession.login = null
                                     UserSession.selectedModel = null
@@ -757,6 +866,7 @@ fun SettingsScreen(
                     ) {
                         Text(if (isLoggingOut) "Выход..." else "Выход из аккаунта")
                     }
+
 
             TextButton(
                 onClick = { navController.navigate(Routes.Help) },
