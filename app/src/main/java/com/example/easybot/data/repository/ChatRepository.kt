@@ -21,17 +21,26 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import java.io.File
+import com.example.easybot.data.remote.api.AiStreamApi
+import kotlinx.coroutines.flow.Flow
+
 
 //подключение к бэку
 class ChatRepository(
-    private val api: WebApiChatAI = provideApi(UserSession.apiBaseUrl),
+    private val api: WebApiChatAI = provideApi(UserSession.apiBaseUrl)
 ) {
+
+    private val aiStreamApi = AiStreamApi(UserSession.apiBaseUrl)
     private fun getUserId(): Int =
         UserSession.userId?.toInt() ?: error("User not logged in")
 
     // ---- Чаты ----
     suspend fun getChats(): List<ChatDto> {
         return api.getChats(getUserId())
+    }
+
+    fun streamTextMessage(chatId: Long, message: String): Flow<String> {
+        return aiStreamApi.chatStream(chatId = chatId, message = message)
     }
 
     suspend fun createChat(title: String, isIncognito: Boolean): ChatDto {

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.collections.plus
+import androidx.lifecycle.ViewModel
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -101,18 +102,24 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             try {
-                val ai = withTimeoutOrNull(3 * 60_000L) {
-                    repository.sendTextMessage(chatId.toInt(), question)
+                // очищаем placeholder перед стримом
+                val updated0 = _messages.value.toMutableList()
+                val old0 = updated0.getOrNull(placeholderIndex) ?: return@launch
+                updated0[placeholderIndex] = old0.copy(text = "")
+                _messages.value = updated0
+
+                // 🔥 РЕАЛЬНЫЙ СТРИМ ОТ API
+                repository.streamTextMessage(chatId = chatId, message = question).collect { chunk ->
+                    val updated = _messages.value.toMutableList()
+                    val old = updated.getOrNull(placeholderIndex) ?: return@collect
+
+                    updated[placeholderIndex] = old.copy(
+                        text = old.text.orEmpty() + chunk
+                    )
+                    _messages.value = updated
                 }
 
-                if (ai == null) {
-                    setErrorToPlaceholder(
-                        placeholderIndex,
-                        "Ответ занял больше 3 минут, запрос отменён."
-                    )
-                } else {
-                    streamAiMessageInto(placeholderIndex, ai)
-                }
+
             } catch (e: CancellationException) {
                 // 👇 пользователь нажал "Стоп" — не считаем это ошибкой
                 setErrorToPlaceholder(placeholderIndex, "Генерация остановлена.")
