@@ -73,6 +73,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import com.example.easybot.R
+import com.example.easybot.featurechat.util.DocumentProcessingResult
+import com.example.easybot.featurechat.util.processDocument
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
     return try {
@@ -110,7 +112,6 @@ fun ChatPage(
 
 
     var isLoading by remember { mutableStateOf(false) }
-    var streamEnabled by remember { mutableStateOf(false) }
 
     // выбранная модель на время сессии
     var selectedModel by remember {
@@ -214,6 +215,8 @@ fun ChatPage(
                 selectedModel = userSettings.model ?: oLlamaModels.firstOrNull().orEmpty()
                 temperature   = userSettings.temperature ?: 0.7
                 maxTokens     = userSettings.maxTokens ?: 1024
+                UserSession.streamEnabled = userSettings.stream
+
 
                 UserSession.selectedModel = selectedModel
                 UserSession.temperature   = temperature
@@ -287,6 +290,8 @@ fun ChatPage(
 
             pendingImagesBase64 = pendingImagesBase64 + imagesBase64
         }
+
+
 
     // ---------- ЛАУНЧЕР РАЗРЕШЕНИЯ НА КАМЕРУ ----------
     val permissionLauncher =
@@ -437,6 +442,18 @@ fun ChatPage(
                 multiplePhotoPickerLauncher.launch(
                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                 )
+            },
+            documentMimeTypes = arrayOf(
+                "text/plain",
+                "text/csv",
+                "text/comma-separated-values",
+                "application/vnd.ms-excel"
+            ),
+            onDocumentPicked = { pickedUri ->
+                when (val result = processDocument(context, pickedUri)) {
+                    is DocumentProcessingResult.Content -> viewModel.sendMessage(result.text)
+                    is DocumentProcessingResult.Error -> viewModel.addLocalAssistantMessage(result.message)
+                }
             },
             onCaptureImage = {
                 val hasPermission = ContextCompat.checkSelfPermission(
@@ -643,6 +660,8 @@ fun MessageInput(
     onMessageSend: (String) -> Unit,
     onPickImage: () -> Unit,
     onPickMultipleImages: () -> Unit,
+    documentMimeTypes: Array<String>,
+    onDocumentPicked: (Uri) -> Unit,
     onCaptureImage: () -> Unit,
     onClearAttachment: () -> Unit,
     onStopGeneration: () -> Unit
@@ -650,6 +669,10 @@ fun MessageInput(
     var message by remember { mutableStateOf("") }
     var showAttachments by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val documentPickerLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri?.let(onDocumentPicked)
+        }
 
     Column(
         modifier = Modifier
@@ -824,6 +847,19 @@ fun MessageInput(
                     onClick = {
                         showAttachments = false
                         onPickMultipleImages()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Выбрать документ (.txt, .csv)") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Info,
+                            contentDescription = "Выбрать документ"
+                        )
+                    },
+                    onClick = {
+                        showAttachments = false
+                        documentPickerLauncher.launch(documentMimeTypes)
                     }
                 )
             }

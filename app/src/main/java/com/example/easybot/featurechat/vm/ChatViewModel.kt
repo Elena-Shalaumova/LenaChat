@@ -273,6 +273,22 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun addLocalAssistantMessage(text: String) {
+        if (chatId == -1L || text.isBlank()) return
+
+        val assistantMessage = MessageModel(
+            id = -3L,
+            chatId = chatId,
+            role = 0,
+            type = "text",
+            text = text,
+            images = emptyList(),
+            createdAt = System.currentTimeMillis()
+        )
+
+        _messages.value = _messages.value + assistantMessage
+    }
+
     fun exportAllChats(context: Context, onResult: (success: Boolean) -> Unit = {}) {
         if (isExporting) return
 
