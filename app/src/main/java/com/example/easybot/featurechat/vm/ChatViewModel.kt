@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.collections.plus
 import androidx.lifecycle.ViewModel
+import com.example.easybot.featurechat.model.DocumentAttachment
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -287,6 +288,66 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         )
 
         _messages.value = _messages.value + assistantMessage
+    }
+
+    fun sendDocumentMessage(attachment: DocumentAttachment, extractedText: String) {
+        if (chatId == -1L || extractedText.isBlank()) return
+        if (_isAiBusy.value) return
+
+        currentJob = viewModelScope.launch {
+            _isAiBusy.value = true
+
+            val userMsg = MessageModel(
+                id = -1L,
+                chatId = chatId,
+                role = 1,
+                type = "document",
+                text = null,
+                images = emptyList(),
+                document = attachment,
+                createdAt = System.currentTimeMillis()
+            )
+            _messages.value = _messages.value + userMsg
+
+            val placeholderIndex = _messages.value.size
+            _messages.value = _messages.value + MessageModel(
+                id = -2L,
+                chatId = chatId,
+                role = 0,
+                type = "text",
+                text = "...",
+                images = emptyList(),
+                createdAt = System.currentTimeMillis()
+            )
+
+            try {
+                val updated0 = _messages.value.toMutableList()
+                val old0 = updated0.getOrNull(placeholderIndex) ?: return@launch
+                updated0[placeholderIndex] = old0.copy(text = "")
+                _messages.value = updated0
+
+                repository.streamTextMessage(chatId = chatId, message = extractedText).collect { chunk ->
+                    val updated = _messages.value.toMutableList()
+                    val old = updated.getOrNull(placeholderIndex) ?: return@collect
+
+                    updated[placeholderIndex] = old.copy(
+                        text = old.text.orEmpty() + chunk
+                    )
+                    _messages.value = updated
+                }
+            } catch (e: CancellationException) {
+                setErrorToPlaceholder(placeholderIndex, "Генерация остановлена.")
+            } catch (e: Exception) {
+                e.printStackTrace()
+                setErrorToPlaceholder(
+                    placeholderIndex,
+                    "Произошла ошибка при получении ответа."
+                )
+            } finally {
+                _isAiBusy.value = false
+                currentJob = null
+            }
+        }
     }
 
     fun exportAllChats(context: Context, onResult: (success: Boolean) -> Unit = {}) {

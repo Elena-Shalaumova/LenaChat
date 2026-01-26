@@ -73,8 +73,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import com.example.easybot.R
-import com.example.easybot.featurechat.util.DocumentProcessingResult
-import com.example.easybot.featurechat.util.processDocument
+import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.InsertDriveFile
+import com.example.easybot.featurechat.util.DocumentProcessingOutcome
+import com.example.easybot.featurechat.util.DocumentProcessor
+import android.content.Intent
 
 private fun uriToBase64(context: Context, uri: Uri): String? {
     return try {
@@ -450,9 +454,21 @@ fun ChatPage(
                 "application/vnd.ms-excel"
             ),
             onDocumentPicked = { pickedUri ->
-                when (val result = processDocument(context, pickedUri)) {
-                    is DocumentProcessingResult.Content -> viewModel.sendMessage(result.text)
-                    is DocumentProcessingResult.Error -> viewModel.addLocalAssistantMessage(result.message)
+                try {
+                    context.contentResolver.takePersistableUriPermission(
+                        pickedUri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: SecurityException) {
+                    e.printStackTrace()
+                }
+
+                when (val result = DocumentProcessor.processDocument(context, pickedUri)) {
+                    is DocumentProcessingOutcome.Content -> viewModel.sendDocumentMessage(
+                        attachment = result.attachment,
+                        extractedText = result.text
+                    )
+                    is DocumentProcessingOutcome.Error -> viewModel.addLocalAssistantMessage(result.message)
                 }
             },
             onCaptureImage = {
@@ -538,6 +554,7 @@ fun MessageList(
 fun MessageBubble(message: MessageModel) {
     val isUserMessage = message.role == 1   // 1 – пользователь, 0 – модель
     val isDarkTheme = isSystemInDarkTheme()
+    val context = LocalContext.current
     // считаем, что это "пишущий" бот:
     // плейсхолдер, который ты добавляешь с id = -2L и text = "..."
     val isTypingPlaceholder = (message.id == -2L && message.text == "...")
@@ -595,7 +612,7 @@ fun MessageBubble(message: MessageModel) {
 
             Column {
                 // ----- ТЕКСТ -----
-                if (visibleText.isNotBlank()) {
+                if (visibleText.isNotBlank() && message.document == null) {
                     SelectionContainer {
                         Text(
                             text = visibleText,
@@ -610,6 +627,80 @@ fun MessageBubble(message: MessageModel) {
                         )
                     }
                 }
+
+                val document = message.document
+                if (document != null) {
+                    val sourceUri = remember(document.uri) { Uri.parse(document.uri) }
+                    val saveLauncher = rememberLauncherForActivityResult(
+                        CreateDocument(document.mimeType ?: "text/plain")
+                    ) { destinationUri ->
+                        if (destinationUri == null) return@rememberLauncherForActivityResult
+
+                        val success = copyUriToUri(
+                            context = context,
+                            sourceUri = sourceUri,
+                            destinationUri = destinationUri
+                        )
+
+                        Toast.makeText(
+                            context,
+                            if (success) "Файл сохранён" else "Не удалось сохранить файл",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.InsertDriveFile,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = document.displayName,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                val sizeText = formatFileSize(document.sizeBytes)
+                                if (sizeText != null) {
+                                    Text(
+                                        text = sizeText,
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            TextButton(
+                                onClick = { saveLauncher.launch(document.displayName) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Download,
+                                    contentDescription = "Скачать"
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = "Скачать")
+                            }
+                        }
+                    }
+                }
+
 
                 // ---------- СПИСОК КАРТИНОК ----------
                 if (message.images.isNotEmpty()) {
@@ -908,6 +999,40 @@ fun saveChatSettingsFromChat(
                 Toast.LENGTH_SHORT
             ).show()
         }
+    }
+}
+
+private fun copyUriToUri(
+    context: Context,
+    sourceUri: Uri,
+    destinationUri: Uri
+): Boolean {
+    return try {
+        val input = context.contentResolver.openInputStream(sourceUri) ?: return false
+        val output = context.contentResolver.openOutputStream(destinationUri) ?: return false
+        input.use { safeInput ->
+            output.use { safeOutput ->
+                safeInput.copyTo(safeOutput)
+            }
+        }
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+
+private fun formatFileSize(sizeBytes: Long?): String? {
+    if (sizeBytes == null || sizeBytes < 0) return null
+    val kb = 1024.0
+    val mb = kb * 1024
+    val gb = mb * 1024
+
+    return when {
+        sizeBytes >= gb -> String.format("%.1f GB", sizeBytes / gb)
+        sizeBytes >= mb -> String.format("%.1f MB", sizeBytes / mb)
+        sizeBytes >= kb -> String.format("%.1f KB", sizeBytes / kb)
+        else -> "$sizeBytes B"
     }
 }
 

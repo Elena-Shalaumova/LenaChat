@@ -8,5 +8,6 @@ data class MessageModel(
     val type: String,       // "text" / "image"
     val text: String?,
     val images: List<String> = emptyList(),
+    val document: DocumentAttachment? = null,
     val createdAt: Long
 )

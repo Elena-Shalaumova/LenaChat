@@ -15,6 +15,7 @@ fun MessageDto.toModel(): MessageModel =
         type = type,
         text = text,
         images = images,
+        document = null,
         createdAt = createdAt?.toLongOrNull() ?: System.currentTimeMillis()
     )
 // -----------------------------
